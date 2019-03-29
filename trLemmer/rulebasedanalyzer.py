@@ -112,13 +112,13 @@ class RuleBasedAnalyzer:
             # if "cik" is generated, ExpectsConsonant attribute is added, so only a consonant starting
             # suffix can follow. Likewise, if "ciğ" is produced, a vowel starting suffix is allowed.
             if PhoneticAttribute.CannotTerminate in attributes:
-                attributes.remove(PhoneticAttribute.CannotTerminate)
-            lastToken = transition.last_template_token
-            if lastToken.type_ == 'LAST_VOICED':
-                attributes.append(PhoneticAttribute.ExpectsConsonant)
-            elif lastToken.type_ == 'LAST_NOT_VOICED':
-                attributes.append(PhoneticAttribute.ExpectsVowel)
-                attributes.append(PhoneticAttribute.CannotTerminate)
+                attributes.discard(PhoneticAttribute.CannotTerminate)
+            last_token = transition.last_template_token
+            if last_token.type_ == 'LAST_VOICED':
+                attributes.add(PhoneticAttribute.ExpectsConsonant)
+            elif last_token.type_ == 'LAST_NOT_VOICED':
+                attributes.add(PhoneticAttribute.ExpectsVowel)
+                attributes.add(PhoneticAttribute.CannotTerminate)
             p = path.copy(surfaceTransition, attributes)
             logging.debug(f"P path: {p}")
             new_paths.append(p)

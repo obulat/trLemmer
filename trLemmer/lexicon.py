@@ -349,8 +349,6 @@ class RootLexicon:
     def default_text_dictionaries(cls):
         lexicon = cls()
         lines = []
-        print(f"CWD: {Path.cwd()}; resources dir: {cls.RESOURCES_DIR}")
-        # TODO: get lines from TurkishDictionaryLoader.DEFAULT_DICTIONARY_RESOURCES
         for resource in cls.DEFAULT_DICTIONARY_RESOURCES:
             dict_path = cls.RESOURCES_DIR / resource
             print(f"Dict path: {dict_path}")

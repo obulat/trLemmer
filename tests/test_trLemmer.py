@@ -145,10 +145,8 @@ def test_default_lexicon():
 
 
 def test_sentence():
-    from nltk.tokenize import word_tokenize
     lemmer = TrLemmer()
-    sentence = "Korkma, sönmez bu şafakta yüzen al sancak."
-    import re
-    words = word_tokenize(sentence)
-    for word in words:
-        print(word, '-', lemmer.analyze_word(word))
+    sentence = "Hakkıdır hakka tapan milletimin istiklal!"
+    result = lemmer.lemmatize_sentence(sentence)
+    for word in result:
+        print(word)

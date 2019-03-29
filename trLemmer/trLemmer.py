@@ -23,20 +23,19 @@ class TrLemmer:
         if len(analysis) == 0:
             return word
         elif len(analysis) == 1:
-            return analysis[0].dict_item.lemma
+            return [analysis[0].dict_item.lemma]
         else:
-            return [a.dict_item.lemma for a in analysis]
+            return list(set([a.dict_item.lemma for a in analysis]))
         # return analysis[0].dict_item.lemma
 
     def analyze_sentense(self, sentence):
         return sentence
 
     def lemmatize_sentence(self, sentence):
+        import re
         result = []
-        for i, word in enumerate(sentence.split()):
-            if i == 0:
-                wd = tr.lower(word).replace(',', '')
-                result.append(self.lemmatize(wd))
-            else:
-                result.append(self.lemmatize(word))
+        words = re.split("(\W+)", sentence)
+        for word in words:
+            result.append(self.lemmatize(tr.lower(word)))
+
         return result

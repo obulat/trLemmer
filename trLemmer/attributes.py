@@ -317,7 +317,7 @@ def calculate_phonetic_attributes(word: str, predecessor_attrs=None) -> Set[Phon
 
 
 def morphemic_attributes(data, word: str, pos_data) -> Set:
-    attrs = set()
+    attrs: Set = set()
     if data is None:
         #  if (!posData.primaryPos.equals(PrimaryPos.Punctuation))
         attrs = infer_morphemic_attributes(word, pos_data, attrs)

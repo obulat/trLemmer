@@ -1,7 +1,5 @@
-from collections import namedtuple
 import sys, os
-from typing import List, Set, NamedTuple
-from typing import List, NamedTuple
+from typing import List, Set, NamedTuple, Optional
 
 sys.path.pop(0)
 print(sys.path)
@@ -22,7 +20,7 @@ from trLemmer.lexicon import DictionaryItem, RootLexicon
 class Morpheme(NamedTuple):
     name: str
     id_: str
-    pos: bool = PrimaryPos
+    pos: Optional[PrimaryPos]
     derivational: bool = False
     informal: bool = False
 
@@ -2760,6 +2758,9 @@ class MorphemeTransition:
         self.to_ = to_
         self.condition = condition
 
+    def __repr__(self):
+        return f"MorphemeTransition ({self.from_.id_})-({self.to_.id_})({self.condition if self.condition else ''})"
+
     @property
     def condition_count(self):
         if self.condition is None:
@@ -2771,13 +2772,16 @@ class MorphemeTransition:
 class StemTransition(MorphemeTransition):
     def __init__(self, surface: str, dict_item: DictionaryItem, attrs: Set,
                  to_: MorphemeState):
-        super().__init__(None, to_, None)
+        super().__init__(root_S, to_, None)
         self.surface = surface
         self.dict_item = dict_item
         self.attrs = attrs
 
     def __str__(self):
         return f"<(Dict: {self.dict_item}):{self.surface} → {self.to_}>"
+
+    def __repr__(self):
+        return f"StemTransition({self.dict_item.id_}): {self.surface}→{self.to_.id_}"
 
 
 class SuffixTransition(MorphemeTransition):
@@ -2799,7 +2803,7 @@ class SuffixTransition(MorphemeTransition):
         return f"<{self.from_.id_}→{self.to_.id_}{template_str}>"
 
     def __repr__(self):
-        return f"({self.from_.id_}, {self.to_.id_}, '{self.surface_template}', {self.condition}"
+        return f"SuffixTransition({self.from_.id_}, {self.to_.id_}, '{self.surface_template}', {self.condition})"
 
     def can_pass(self, path):
         return self.condition is None or self.condition.accept(path)
@@ -2878,7 +2882,7 @@ class SurfaceTransition:
         return str(self)
 
 
-def generate_surface(transition: SurfaceTransition, phonetic_attributes: List[PhoneticAttribute]) -> str:
+def generate_surface(transition: SurfaceTransition, phonetic_attributes: Set[PhoneticAttribute]) -> str:
     index = 0
     result = []
     for token in transition.token_list:
@@ -3014,10 +3018,10 @@ class SearchPath:
     def __str__(self):
         st = self.stem_transition
         morpheme_str = " + ".join([str(tran) for tran in self.transitions])
-        return f"<({st.dict_item.id_})(-{self.tail}){morpheme_str}>"
+        return f"<({st.dict_item.id_})(-{self.tail})({morpheme_str})>"
 
     def __repr__(self):
-        return str(self)
+        return f"SearchPath({self.dict_item.id_}) (-{self.tail})({self.transitions})"
 
     def copy(self, surface_node: SurfaceTransition, phonetic_attributes: Set):
         is_terminal = surface_node.state.terminal

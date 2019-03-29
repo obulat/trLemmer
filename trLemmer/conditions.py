@@ -38,7 +38,7 @@ class NotCondition(Condition):
     def accept(self, path):
         return not self.condition.accept(path)
 
-    def __str__(self):
+    def __repr__(self):
         return f"Not{self.condition}"
 
 
@@ -159,8 +159,8 @@ class HasRootAttribute(Condition):
     def accept(self, path):
         return path.dict_item.has_attribute(self.attribute)  # TODO test
 
-    def __str__(self):
-        return f"HasRootAttribute[{self.attribute}]"
+    def __repr__(self):
+        return f"HasRootAttribute({self.attribute})"
 
 
 # tested
@@ -171,8 +171,8 @@ class HasAnyRootAttribute(Condition):
     def accept(self, path):
         return path.dict_item.has_any_attribute(self.attributes)
 
-    def __str__(self):
-        return f"HasAnyRootAttribute[{self.attributes}]"
+    def __repr__(self):
+        return f"HasAnyRootAttribute({self.attributes})"
 
 
 class HasPhoneticAttribute(Condition):
@@ -182,8 +182,8 @@ class HasPhoneticAttribute(Condition):
     def accept(self, path):
         return self.attribute in path.phonetic_attributes
 
-    def __str__(self):
-        return f"HasPhoneticAttribute[{self.attribute}]"
+    def __repr__(self):
+        return f"HasPhoneticAttribute({self.attribute})"
 
 
 # tested
@@ -194,8 +194,8 @@ class DictionaryItemIs(Condition):
     def accept(self, path):
         return self.dict_item is not None and path.dict_item == self.dict_item
 
-    def __str__(self):
-        return f"DictionaryItemIs[{self.dict_item}]"
+    def __repr__(self):
+        return f"DictionaryItemIs({self.dict_item})"
 
 
 class RootPrimaryPosIs(Condition):
@@ -205,8 +205,8 @@ class RootPrimaryPosIs(Condition):
     def accept(self, path):
         return path.dict_item.primary_pos == self.pos
 
-    def __str__(self):
-        return f"RootPrimaryPosIs[{self.pos}]"
+    def __repr__(self):
+        return f"RootPrimaryPosIs({self.pos})"
 
 
 class SecondaryPosIs(Condition):
@@ -216,7 +216,7 @@ class SecondaryPosIs(Condition):
     def accept(self, path):
         return path.dict_item.secondary_pos == self.pos
 
-    def __str__(self):
+    def __repr__(self):
         return f"SecondaryPosIs[{self.pos}]"
 
 
@@ -229,8 +229,8 @@ class DictionaryItemIsAny(Condition):
         # print(f"Dictionary item is any: {path.dict_item}/ {self.items}")
         return path.dict_item in self.items
 
-    def __str__(self):
-        return f"DictionaryItemIsAny[{self.items}]"
+    def __repr__(self):
+        return f"DictionaryItemIsAny({self.items})"
 
 
 class DictionaryItemIsNone(Condition):
@@ -242,8 +242,8 @@ class DictionaryItemIsNone(Condition):
         # print(f"Dictionary item is none: {path.dict_item}/ {self.items}")
         return path.dict_item not in self.items
 
-    def __str__(self):
-        return f"DictionaryItemIsNone[{self.items}]"
+    def __repr__(self):
+        return f"DictionaryItemIsNone({self.items})"
 
 
 class HasAnySuffixSurface(Condition):
@@ -251,7 +251,7 @@ class HasAnySuffixSurface(Condition):
     def accept(self, path):
         return path.containsSuffixWithSurface()
 
-    def __str__(self):
+    def __repr__(self):
         return "HasAnySuffixSurface{}"
 
 
@@ -261,7 +261,7 @@ class HasTail(Condition):
     def accept(self, path):
         return len(path.tail) != 0
 
-    def __str__(self):
+    def __repr__(self):
         return "HasTail{}"
 
 
@@ -270,7 +270,7 @@ class HasNoTail(Condition):
     def accept(self, path):
         return len(path.tail) == 0
 
-    def __str__(self):
+    def __repr__(self):
         return "HasNoTail{}"
 
 
@@ -290,8 +290,8 @@ class HasTailSequence(Condition):
 
         return True
 
-    def __str__(self):
-        return f"HasTailSequence[{self.morphemes}]"
+    def __repr__(self):
+        return f"HasTailSequence({self.morphemes})"
 
 
 class ContainsMorphemeSequence(Condition):
@@ -299,28 +299,21 @@ class ContainsMorphemeSequence(Condition):
         self.morphemes = morphemes
 
     def accept(self, path):
-        pass
 
-    """
-      List<SurfaceTransition> forms = path.transitions
-      if (forms.size() < morphemes.length):
-        return False
-      }
-      int m = 0
-      for form in forms:
-        if (form.getMorpheme().equals(morphemes[m])):
-          m++
-          if (m == morphemes.length):
-            return True
-          }
-        } else {
-          m = 0
-    return False
-    }
-    """
+        forms = path.transitions
+        if len(forms) < len(self.morphemes):
+            return False
+        m = 0
+        for form in forms:
+            if form.morpheme == self.morphemes[m]:
+                m += 1
+                if m == len(self.morphemes):
+                    return True
+            else:
+                return False
 
-    def __str__(self):
-        return f"ContainsMorphemeSequence[{self.morphemes}]"
+    def __repr__(self):
+        return f"ContainsMorphemeSequence({self.morphemes})"
 
 
 class CurrentMorphemeIs(Condition):
@@ -330,8 +323,8 @@ class CurrentMorphemeIs(Condition):
     def accept(self, path):
         return path.current_state.morpheme == self.morpheme
 
-    def __str__(self):
-        return f"CurrentMorphemeIs[{self.morpheme}]"
+    def __repr__(self):
+        return f"CurrentMorphemeIs({self.morpheme})"
 
 
 class PreviousMorphemeIs(Condition):
@@ -342,8 +335,8 @@ class PreviousMorphemeIs(Condition):
         previous_state = path.previous_state
         return previous_state is not None and previous_state.morpheme == self.morpheme
 
-    def __str__(self):
-        return f"PreviousMorphemeIs[{self.morpheme.id_}]"
+    def __repr__(self):
+        return f"PreviousMorphemeIs({self.morpheme.id_})"
 
 
 class PreviousStateIs(Condition):
@@ -354,8 +347,8 @@ class PreviousStateIs(Condition):
         previous_state = path.previous_state
         return previous_state is not None and previous_state == self.state
 
-    def __str__(self):
-        return f"PreviousStateIs[{self.state}]"
+    def __repr__(self):
+        return f"PreviousStateIs({self.state})"
 
 
 class PreviousStateIsNot(Condition):
@@ -366,8 +359,8 @@ class PreviousStateIsNot(Condition):
         previous_state = path.previous_state
         return previous_state is None or previous_state != self.state
 
-    def __str__(self):
-        return f"PreviousStateIsNot[{self.state}]"
+    def __repr__(self):
+        return f"PreviousStateIsNot({self.state})"
 
 
 class RootSurfaceIs(Condition):
@@ -377,8 +370,8 @@ class RootSurfaceIs(Condition):
     def accept(self, path):
         return path.stem_transition.surface == self.surface
 
-    def __str__(self):
-        return f"RootSurfaceIs[{self.surface}]"
+    def __repr__(self):
+        return f"RootSurfaceIs({self.surface})"
 
 
 class RootSurfaceIsAny(Condition):
@@ -392,8 +385,8 @@ class RootSurfaceIsAny(Condition):
 
         return False
 
-    def __str__(self):
-        return f"RootSurfaceIsAny[{self.surfaces}]"
+    def __repr__(self):
+        return f"RootSurfaceIsAny({self.surfaces})"
 
 
 class CurrentStateIs(Condition):
@@ -403,8 +396,8 @@ class CurrentStateIs(Condition):
     def accept(self, path):
         return path.current_state == self.state
 
-    def __str__(self):
-        return f"CurrentStateIs[{self.state}]"
+    def __repr__(self):
+        return f"CurrentStateIs({self.state})"
 
 
 class CurrentStateIsNot(Condition):
@@ -415,8 +408,8 @@ class CurrentStateIsNot(Condition):
     def accept(self, path):
         return path.current_state != self.state
 
-    def __str__(self):
-        return f"CurrentStateIsNot[{self.state}]"
+    def __repr__(self):
+        return f"CurrentStateIsNot({self.state})"
 
 
 def last_derivation_is(state):
@@ -435,8 +428,8 @@ class LastDerivationIs(Condition):
                 return sf.state == self.state
         return False
 
-    def __str__(self):
-        return "LastDerivationIs[{state}]"
+    def __repr__(self):
+        return f"LastDerivationIs({self.state})"
 
 
 class HasDerivation(Condition):
@@ -444,11 +437,11 @@ class HasDerivation(Condition):
     def accept(self, path):
         suffixes = path.transitions
         for suffix in suffixes:
-            if suffix.state.is_derivative:
+            if suffix.state.derivative:
                 return True
         return False
 
-    def __str__(self):
+    def __repr__(self):
         return "HasDerivation"
 
 
@@ -459,12 +452,12 @@ class LastDerivationIsAny(Condition):
     def accept(self, path):
         suffixes = path.transitions
         for sf in reversed(suffixes):
-            if sf.state.is_derivative:
+            if sf.state.derivative:
                 return sf.state in self.states
         return False
 
-    def __str__(self):
-        return f"LastDerivationIsAny[{self.states}]"
+    def __repr__(self):
+        return f"LastDerivationIsAny({self.states})"
 
 
 class CurrentGroupContainsAny(Condition):
@@ -480,13 +473,13 @@ class CurrentGroupContainsAny(Condition):
         for sf in reversed(suffixes):
             if sf.state in self.states:
                 return True
-            if sf.state.is_derivative:
+            if sf.state.derivative:
                 return False
 
         return False
 
-    def __str__(self):
-        return f"CurrentGroupContainsAny[{self.states}]"
+    def __repr__(self):
+        return f"CurrentGroupContainsAny({self.states})"
 
 
 class PreviousGroupContains(Condition):
@@ -513,8 +506,8 @@ class PreviousGroupContains(Condition):
                 return False
             return False
 
-    def __str__(self):
-        return f"PreviousGroupContains[{self.states}]"
+    def __repr__(self):
+        return f"PreviousGroupContains({self.states})"
 
 
 class PreviousGroupContainsMorpheme(Condition):
@@ -541,9 +534,9 @@ class PreviousGroupContainsMorpheme(Condition):
                 return False
             return False
 
-    def __str__(self):
+    def __repr__(self):
         morpheme_str = ', '.join([m.id_ for m in self.morphemes])
-        return f"PreviousGroupContainsMorpheme[{morpheme_str}]"
+        return f"PreviousGroupContainsMorpheme({morpheme_str})"
 
 
 class NoSurfaceAfterDerivation(Condition):
@@ -561,7 +554,7 @@ class NoSurfaceAfterDerivation(Condition):
                 return False
         return True
 
-    def __str__(self):
+    def __repr__(self):
         return "NoSurfaceAfterDerivation{}"
 
 
@@ -576,9 +569,9 @@ class ContainsMorpheme(Condition):
                 return True
         return False
 
-    def __str__(self):
+    def __repr__(self):
         morphemes_str = ', '.join([m.id_ for m in self.morphemes])
-        return f"ContainsMorpheme[{morphemes_str}]"
+        return f"ContainsMorpheme({morphemes_str})"
 
 
 class PreviousMorphemeIsAny(Condition):
@@ -589,8 +582,8 @@ class PreviousMorphemeIsAny(Condition):
         previous_state = path.previous_state
         return previous_state is not None and previous_state.morpheme in self.morphemes
 
-    def __str__(self):
-        return f"PreviousMorphemeIsAny[{self.morphemes}]"
+    def __repr__(self):
+        return f"PreviousMorphemeIsAny({self.morphemes})"
 
 
 class CurrentMorphemeIsAny(Condition):
@@ -602,8 +595,8 @@ class CurrentMorphemeIsAny(Condition):
         previous_state = path.current_state
         return previous_state is not None and previous_state.morpheme in self.morphemes
 
-    def __str__(self):
-        return f"CurrentMorphemeIsAny[{self.morphemes}]"
+    def __repr__(self):
+        return f"CurrentMorphemeIsAny({self.morphemes})"
 
 
 class PreviousStateIsAny(Condition):

@@ -84,10 +84,9 @@ def test_or_condition(test_input, expected_op_len):
 def test_dict_item_conditions():
     existing_attr = RootAttribute.CompoundP3sgRoot
 
-    dict_item = DictionaryItem(lemma='word', root='word', attrs=[existing_attr],
-                               pronunciation='word', primary_pos=PrimaryPos.Noun, secondary_pos=SecondaryPos.NONE,
-                               index=0)
-    stem_transition = StemTransition(dict_item.lemma, dict_item, [existing_attr], noun_S)
+    dict_item = DictionaryItem(lemma='word', root='word', primary_pos=PrimaryPos.Noun, secondary_pos=SecondaryPos.NONE,
+                               attrs={existing_attr}, pronunciation='word', index=0)
+    stem_transition = StemTransition(dict_item.lemma, dict_item, {existing_attr}, noun_S)
     path = SearchPath.initial(stem_transition, 'tail')
     condition = not_have_any(existing_attr)
     assert condition.accept(path)
@@ -99,10 +98,9 @@ def test_dict_item_conditions():
     condition = DictionaryItemIs(dict_item)
     assert condition.accept(path)
 
-    another_dict_item = DictionaryItem(lemma='word1', root='word', attrs=[RootAttribute.CompoundP3sgRoot],
-                                       pronunciation='word', primary_pos=PrimaryPos.Noun,
-                                       secondary_pos=SecondaryPos.NONE,
-                                       index=0)
+    another_dict_item = DictionaryItem(lemma='word1', root='word', primary_pos=PrimaryPos.Noun,
+                                       secondary_pos=SecondaryPos.NONE, attrs=[RootAttribute.CompoundP3sgRoot],
+                                       pronunciation='word', index=0)
     another_condition = root_is(another_dict_item)
     assert not another_condition.accept(path)
 
