@@ -20,17 +20,28 @@ Turkish Lemmatizer
 
 
 
-Python lemmatizer for Turkish
+trLemmer is a partial port of Zemberek library to Python for lemmatizing
+Turkish language words. It is not ready for use yet.
 
 
 * Free software: MIT license
 * Documentation: https://trLemmer.readthedocs.io.
 
 
-Features
---------
+Basic Usage
+~~~~~~~~~~~
 
-* TODO
+.. code-block:: pycon
+
+    >>> from trLemmer import TrLemmer
+    >>> lemmatizer = TrLemmer()
+    >>> lemma = lemmatizer.lemmatize('beyazlaştıracak')
+    >>> print(lemma)
+    beyaz
+
+
+
+
 
 Credits
 -------
@@ -39,3 +50,8 @@ This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypack
 
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+
+This package is a Python port of part of the Zemberek_ package by `Ahmet A. Akın`_
+
+.. _Zemberek: https://github.com/ahmetaa/zemberek-nlp
+.. _Ahmet A. Akın: https://github.com/ahmetaa/

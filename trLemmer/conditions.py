@@ -222,9 +222,11 @@ class SecondaryPosIs(Condition):
 
 class DictionaryItemIsAny(Condition):
     def __init__(self, items):
-        self.items = items
+        # Temporary:
+        self.items = [item for item in items if item is not None]
 
     def accept(self, path):
+        # print(f"Dictionary item is any: {path.dict_item}/ {self.items}")
         return path.dict_item in self.items
 
     def __str__(self):
@@ -233,9 +235,11 @@ class DictionaryItemIsAny(Condition):
 
 class DictionaryItemIsNone(Condition):
     def __init__(self, items):
-        self.items = items
+        # Temporary:
+        self.items = [item for item in items if item is not None]
 
     def accept(self, path):
+        # print(f"Dictionary item is none: {path.dict_item}/ {self.items}")
         return path.dict_item not in self.items
 
     def __str__(self):
@@ -497,7 +501,7 @@ class PreviousGroupContains(Condition):
         suffixes = path.transitions
         last_index = len(suffixes) - 1
         sf = suffixes[last_index]
-        while not sf.state.is_derivative:
+        while not sf.state.derivative:
             if last_index == 0:
                 return False
             last_index -= 1
@@ -505,7 +509,7 @@ class PreviousGroupContains(Condition):
         for sf in reversed(suffixes[:last_index]):
             if sf.state in self.states:
                 return True
-            if sf.state.is_derivative:
+            if sf.state.derivative:
                 return False
             return False
 
@@ -525,7 +529,7 @@ class PreviousGroupContainsMorpheme(Condition):
         suffixes = path.transitions
         last_index = len(suffixes) - 1
         sf = suffixes[last_index]
-        while not sf.state.is_derivative:
+        while not sf.state.derivative:
             if last_index == 0:
                 return False
             last_index -= 1
@@ -533,7 +537,7 @@ class PreviousGroupContainsMorpheme(Condition):
         for sf in reversed(suffixes[:last_index]):
             if sf.state.morpheme in self.morphemes:
                 return True
-            if sf.state.is_derivative:
+            if sf.state.derivative:
                 return False
             return False
 

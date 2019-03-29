@@ -4,8 +4,8 @@
 """Tests for `trLemmer.conditions` module."""
 import pytest
 from trLemmer.attributes import RootAttribute, PhoneticAttribute, PrimaryPos, SecondaryPos
-from trLemmer.conditions import CombinedCondition, has, HasAnyRootAttribute, HasRootAttribute, DictionaryItemIs
-from trLemmer.lexicon import DictionaryItem
+from trLemmer.conditions import CombinedCondition, has, HasAnyRootAttribute, HasRootAttribute, DictionaryItemIs, not_have_any
+from trLemmer.lexicon import DictionaryItem, RootLexicon
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S
 
 lex = RootLexicon.from_lines(["adak", "elma", "beyaz [P:Adj]", "meyve"])
@@ -82,10 +82,11 @@ def test_or_condition(test_input, expected_op_len):
 
 
 def test_dict_item_conditions():
-    dict_item = DictionaryItem(lemma='word', root='word', attrs=[RootAttribute.CompoundP3sgRoot],
+    existing_attr = RootAttribute.CompoundP3sgRoot
+
+    dict_item = DictionaryItem(lemma='word', root='word', attrs=[existing_attr],
                                pronunciation='word', primary_pos=PrimaryPos.Noun, secondary_pos=SecondaryPos.NONE,
                                index=0)
-    existing_attr = RootAttribute.CompoundP3sgRoot
     stem_transition = StemTransition(dict_item.lemma, dict_item, [existing_attr], noun_S)
     path = SearchPath.initial(stem_transition, 'tail')
     condition = not_have_any(existing_attr)

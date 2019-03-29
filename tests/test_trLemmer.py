@@ -59,10 +59,9 @@ def test_rootlexicon(dict_item):
     assert dict_item in lex.item_set
     assert dict_item.id_ in lex.id_dict
     print(dict_item.id_)
-    item = lex.getItemById(dict_item.id_)
+    item = lex.get_item_by_id(dict_item.id_)
     assert item == dict_item
     assert len(lex) == 1
-
 
 
 def test_initial_search_path():
@@ -136,3 +135,20 @@ def test_analysis(lex_from_lines):
     assert lemmer.lemmatize('beyazlaştı') == 'beyaz'
     assert lemmer.lemmatize('elmalı') == 'elma'
     assert lemmer.lemmatize('meyvesiz') == 'meyve'
+
+
+def test_default_lexicon():
+    lex = RootLexicon.default_text_dictionaries()
+    print(len(lex))
+    print(lex.get_item_by_id('elma_Noun'))
+    assert len(lex) > 0
+
+
+def test_sentence():
+    from nltk.tokenize import word_tokenize
+    lemmer = TrLemmer()
+    sentence = "Korkma, sönmez bu şafakta yüzen al sancak."
+    import re
+    words = word_tokenize(sentence)
+    for word in words:
+        print(word, '-', lemmer.analyze_word(word))

@@ -24,15 +24,12 @@ vowels_rounded_set = {'o', 'u', 'ö', 'ü', 'û'}
 lower_to_upper = dict(zip(all_lower, all_upper))
 upper_to_lower = dict(zip(all_upper, all_lower))
 
-voicing = {'ş': 'j', 'k': 'g', 'ç': 'c', 's': 'z', 't': 'd', 'f': 'v', 'p': 'b'}
-devoicing = {'j': 'ş', 'g': 'k', 'c': 'ç', 'z': 's', 'd': 't', 'v': 'f', 'b': 'p'}
+voicing = {'ş': 'j', 'k': 'g', 'ç': 'c', 's': 'z', 't': 'd', 'f': 'v', 'p': 'b', 'g': 'ğ'}
+devoicing = {'j': 'ş', 'g': 'k', 'c': 'ç', 'z': 's', 'd': 't', 'v': 'f', 'b': 'p', 'ğ': 'g'}
 
 
 def voice(letter):
-    if letter in consonants_voiceless_set:
-        return voicing[letter]
-    else:
-        return letter
+    return voicing.get(letter, letter)
 
 
 def devoice(letter):
@@ -81,6 +78,16 @@ def is_vowel(symbol):
     return symbol in vowels_lower_set or symbol in vowels_upper_set
 
 
-def is_stop_consonant(symbol):
+def is_voiceless_stop_consonant(symbol):
     symbol = lower(symbol)
-    return symbol in consonants_voiceless_stop_set or symbol in consonants_voiced_stop_set
+    return symbol in consonants_voiceless_stop_set
+
+
+circumflex = "âîûÂÎÛ"
+noncircumflex = "aiuAIU"
+decircumflex = dict(zip(circumflex, noncircumflex))
+
+
+def normalize_circumflex(word):
+    result = ''.join([decircumflex.get(c, c) for c in word])
+    return result

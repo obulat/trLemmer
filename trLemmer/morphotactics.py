@@ -745,7 +745,10 @@ class StemTransitionsMapBased:
         self.single_stems = {}
         self.different_stem_items = {}
         for dict_item in self.lexicon.items:
-            self.add_dict_item(dict_item)
+            if dict_item is None:
+                print(dict_item)
+            else:
+                self.add_dict_item(dict_item)
 
     def generate_transitions(self, dict_item):
         def has_modifier_attribute(item):
@@ -776,14 +779,15 @@ class StemTransitionsMapBased:
         unmodified_root_state = None
         for attr in dict_item.attributes:
             if attr == RootAttribute.Voicing:
-                last = result[-1]
+                last = dict_item.pronunciation[-1]
                 voiced = tr.voice(last)
                 if last == voiced:
-                    raise ValueError(f"Voicing letter is not proper in {dict_item}")
+                    raise ValueError(f"Voicing letter is not proper in {dict_item}: {last} - {voiced}")
                 if dict_item.lemma.endswith('nk'):
                     voiced = 'g'
                 result[-1] = voiced
-                modified_attrs.remove(PhoneticAttribute.LastLetterVoicelessStop)
+                if PhoneticAttribute.LastLetterVoicelessStop in modified_attrs:
+                    modified_attrs.remove(PhoneticAttribute.LastLetterVoicelessStop)
                 original_attrs.append(PhoneticAttribute.ExpectsConsonant)
                 modified_attrs.append(PhoneticAttribute.ExpectsVowel)
                 modified_attrs.append(PhoneticAttribute.CannotTerminate)
@@ -803,15 +807,17 @@ class StemTransitionsMapBased:
                     if dict_item.primary_pos != PrimaryPos.Verb:
                         original_attrs.append(PhoneticAttribute.ExpectsConsonant)
                     else:
-                        unmodified_root_state = self.morphotactics.verbLastVowelDropUnmodRoot_S
-                        modified_root_state = self.morphotactics.verbLastVowelDropModRoot_S
+                        unmodified_root_state = verbLastVowelDropUnmodRoot_S
+                        modified_root_state = verbLastVowelDropModRoot_S
                 modified_attrs.append(PhoneticAttribute.ExpectsVowel)
                 modified_attrs.append(PhoneticAttribute.CannotTerminate)
             elif attr == RootAttribute.InverseHarmony:
                 original_attrs.append(PhoneticAttribute.LastVowelFrontal)
-                original_attrs.remove(PhoneticAttribute.LastVowelBack)
+                if PhoneticAttribute.LastVowelBack in original_attrs:
+                    original_attrs.remove(PhoneticAttribute.LastVowelBack)
                 modified_attrs.append(PhoneticAttribute.LastVowelFrontal)
-                modified_attrs.remove(PhoneticAttribute.LastVowelBack)
+                if PhoneticAttribute.LastVowelBack in modified_attrs:
+                    modified_attrs.remove(PhoneticAttribute.LastVowelBack)
             elif attr == RootAttribute.ProgressiveVowelDrop:
                 if len(result) > 1:
                     result.pop()
@@ -843,6 +849,8 @@ class StemTransitionsMapBased:
             return [original, modified]
 
     def handle_special_roots(self, dict_item):
+        special_item_dict = {"birbiri_Pron_Quant": "birbir", "çoğu_Pron_Quant": "çok", "öbürü_Pron_Quant": "öbürü",
+                             "birçoğu_Pron_Quant": "birçok"}
         item_id = dict_item.id_
         original_attrs = calculate_phonetic_attributes(dict_item.pronunciation)
         unmodified_root_state = self.morphotactics.get_root_state(dict_item, original_attrs)
@@ -852,62 +860,52 @@ class StemTransitionsMapBased:
             original = StemTransition(dict_item.root, dict_item, original_attrs, unmodified_root_state)
             root_for_modified = None
             if dict_item.primary_pos == PrimaryPos.Noun:
-                root_for_modified = self.morphotactics.nounLastVowelDropRoot_S
+                root_for_modified = nounLastVowelDropRoot_S
             elif dict_item.primary_pos == PrimaryPos.Adjective:
-                root_for_modified = self.morphotactics.adjLastVowelDropRoot_S
+                root_for_modified = adjLastVowelDropRoot_S
 
             # TODO: check postpositive case. Maybe it is not required.
             elif dict_item.primary_pos == PrimaryPos.PostPositive:
-                root_for_modified = self.morphotactics.adjLastVowelDropRoot_S
+                root_for_modified = adjLastVowelDropRoot_S
             else:
                 raise ValueError(f"No root morpheme state found for {dict_item}")
 
             m = dict_item.root[:-1]
             modified = StemTransition(m, dict_item, calculate_phonetic_attributes(m), root_for_modified)
-            modified.phonetic_attrs.append(PhoneticAttribute.ExpectsConsonant)
-            modified.phonetic_attrs.append(PhoneticAttribute.CannotTerminate)
+            modified.attrs.append(PhoneticAttribute.ExpectsConsonant)
+            modified.attrs.append(PhoneticAttribute.CannotTerminate)
             return [original, modified]
         elif item_id in ["ben_Pron_Pers", "sen_Pron_Pers"]:
             original = StemTransition(dict_item.root, dict_item, original_attrs, unmodified_root_state)
             if dict_item.lemma == "ben":
                 modified = StemTransition("ban", dict_item, calculate_phonetic_attributes("ban"),
-                                          self.morphotactics.pronPers_Mod_S)
+                                          pronPers_Mod_S)
             else:
                 modified = StemTransition("san", dict_item, calculate_phonetic_attributes("san"),
-                                          self.morphotactics.pronPers_Mod_S)
-            original.phonetic_attrs.append(PhoneticAttribute.UnModifiedPronoun)
-            modified.phonetic_attrs.append(PhoneticAttribute.ModifiedPronoun)
+                                          pronPers_Mod_S)
+            original.attrs.append(PhoneticAttribute.UnModifiedPronoun)
+            modified.attrs.append(PhoneticAttribute.ModifiedPronoun)
             return [original, modified]
         elif item_id in ["demek_Verb", "yemek_Verb"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs, self.morphotactics.vDeYeRoot_S)
+            original = StemTransition(dict_item.root, dict_item, original_attrs, vDeYeRoot_S)
             if dict_item.lemma == "demek":
                 modified = StemTransition("di", dict_item, calculate_phonetic_attributes("di"),
-                                          self.morphotactics.vDeYeRoot_S)
+                                          vDeYeRoot_S)
             else:
                 modified = StemTransition("yi", dict_item, calculate_phonetic_attributes("yi"),
-                                          self.morphotactics.vDeYeRoot_S)
+                                          vDeYeRoot_S)
             return [original, modified]
         elif item_id == "imek_Verb":
-            original = StemTransition(dict_item.root, dict_item, original_attrs, self.morphotactics.imekRoot_S)
+            original = StemTransition(dict_item.root, dict_item, original_attrs, imekRoot_S)
             return [original]
-        elif item_id in ["birbiri_Pron_Quant", "çoğu_Pron_Quant", "öbürü_Pron_Quant", "birçoğu_Pron_Quant"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs, self.morphotactics.pronQuant_S)
-            if dict_item.lemma == "birbiri":
-                modified = StemTransition("birbir", dict_item, calculate_phonetic_attributes("birbir"),
-                                          self.morphotactics.pronQuantModified_S)
-            elif dict_item.lemma == "çoğu":
-                modified = StemTransition("çok", dict_item, calculate_phonetic_attributes("çok"),
-                                          self.morphotactics.pronQuantModified_S)
-            elif dict_item.lemma == "öbürü":
-                modified = StemTransition("öbür", dict_item, calculate_phonetic_attributes("öbür"),
-                                          self.morphotactics.pronQuantModified_S)
-            else:
-                modified = StemTransition("birçok", dict_item, calculate_phonetic_attributes("birçok"),
-                                          self.morphotactics.pronQuantModified_S)
-
-                original.phonetic_attrs.append(PhoneticAttribute.UnModifiedPronoun)
-                modified.phonetic_attrs.append(PhoneticAttribute.ModifiedPronoun)
-                return [original, modified]
+        elif item_id in special_item_dict:
+            original = StemTransition(dict_item.root, dict_item, original_attrs, pronQuant_S)
+            modified_root = special_item_dict[item_id]
+            modified = StemTransition(modified_root, dict_item, calculate_phonetic_attributes(modified_root),
+                                      pronQuantModified_S)
+            original.attrs.append(PhoneticAttribute.UnModifiedPronoun)
+            modified.attrs.append(PhoneticAttribute.ModifiedPronoun)
+            return [original, modified]
         else:
             raise ValueError(f"Lexicon Item with special stem change cannot be handled: {dict_item}")
 
@@ -954,10 +952,12 @@ class StemTransitionsMapBased:
             return self.different_stem_items.get(dict_item)
         else:
             transitions = self.transitions_from_stem(dict_item.root)
-            return [tr for transition in tr if tr.dict_item == dict_item]
+            return [transition for transition in transitions if transition.dict_item == dict_item]
 
     def add_dict_item(self, dict_item):
         transitions = self.generate_transitions(dict_item)
+        if transitions is None:
+            print(f"Transitions are none for {dict_item}")
         for transition in transitions:
             self.add_stem_transition(transition)
         if len(transitions) > 1 or (len(transitions) == 1 and dict_item.root != transitions[0].surface):
@@ -975,11 +975,16 @@ class TurkishMorphotactics:
     def __init__(self, lexicon: RootLexicon):
         self.lexicon = lexicon
         self.make_graph()
-        self.item_root_states = {}  # TODO
+        self.item_root_states = {"değil_Verb": nVerbDegil_S,
+                                 "imek_Verb": imekRoot_S,
+                                 "su_Noun": nounSuRoot_S,
+                                 "akarsu_Noun": nounSuRoot_S,
+                                 "öyle_Adv": advForVerbDeriv_ST,
+                                 "böyle_Adv": advForVerbDeriv_ST,
+                                 "şöyle_Adv": advForVerbDeriv_ST}
         self.stem_transitions = StemTransitionsMapBased(self)
 
     def make_graph(self):
-        self.map_special_items_to_root_states()
         self.connect_noun_states()
         self.connect_proper_nouns_and_abbreviations()
         self.connect_adjective_states()
@@ -988,20 +993,17 @@ class TurkishMorphotactics:
         self.connect_pronoun_states()
         self.connect_verb_after_pronoun()
         self.connect_verbs()
-        self.connectQuestion()
+        self.connect_question()
         self.connect_adverbs()
         self.connect_last_vowel_drop_words()
         self.connect_postpositives()
-        self.connectImek()
-        self.handlePostProcessingConnections()
-
-    def map_special_items_to_root_states(self):
-        pass
+        self.connect_imek()
+        self.handle_post_processing_connections()
 
     def connect_noun_states(self):
         """
         Turkish Nouns always have Noun-Person-Possession-Case morphemes.  Even there are no suffix
-        characters. elma -> Noun:elma - A3sg:ε - Pnon:ε - Nom:ε (Third person singular, No possession,
+        characters. elma -> Noun:elma - A3sg:ε - Pnon:ε - Nom:ε (Third person singular: No possession,
         Nominal Case)
         """
 
@@ -1299,13 +1301,13 @@ class TurkishMorphotactics:
 
         time = CURRENT_GROUP_EMPTY.and_(SecondaryPosIs(SecondaryPos.Time))
 
-        dun = self.lexicon.getItemById("dün_Noun_Time")
-        gun = self.lexicon.getItemById("gün_Noun_Time")
-        bugun = self.lexicon.getItemById("bugün_Noun_Time")
-        ileri = self.lexicon.getItemById("ileri_Noun")
-        geri = self.lexicon.getItemById("geri_Noun")
-        ote = self.lexicon.getItemById("öte_Noun")
-        beri = self.lexicon.getItemById("beri_Noun")
+        dun = self.lexicon.get_item_by_id("dün_Noun_Time")
+        gun = self.lexicon.get_item_by_id("gün_Noun_Time")
+        bugun = self.lexicon.get_item_by_id("bugün_Noun_Time")
+        ileri = self.lexicon.get_item_by_id("ileri_Noun")
+        geri = self.lexicon.get_item_by_id("geri_Noun")
+        ote = self.lexicon.get_item_by_id("öte_Noun")
+        beri = self.lexicon.get_item_by_id("beri_Noun")
 
         time2 = root_is_any(dun, gun, bugun)
         nom_ST.add(rel_S, "ki", time.and_not(time2))
@@ -1431,8 +1433,9 @@ class TurkishMorphotactics:
 
         numeralRoot_ST.add(justLike_S, "ImsI",
                            not_have(
-                               PhoneticAttribute.LastLetterVowel).and_(NoSurfaceAfterDerivation()).and_(ContainsMorpheme(
-            justLike).not_()))
+                               PhoneticAttribute.LastLetterVowel).and_(NoSurfaceAfterDerivation()).and_(
+                               ContainsMorpheme(
+                                   justLike).not_()))
 
     def connect_verb_after_noun_adj_states(self):
         # elma-..-ε-yım
@@ -1450,7 +1453,7 @@ class TurkishMorphotactics:
         # word "değil" is special. It contains negative suffix implicitly. Also it behaves like
         # noun->Verb Zero morpheme derivation. because it cannot have most Verb suffixes.
         # So we connect it to a separate root state "nVerbDegil" instead of Verb
-        degilRoot = self.lexicon.getItemById("değil_Verb")
+        degilRoot = self.lexicon.get_item_by_id("değil_Verb")
         nVerbDegil_S.add_empty(nNeg_S, root_is(degilRoot))
         # copy transitions from nVerb_S
         nNeg_S.copyOutgoingTransitionsFrom(nVerb_S)
@@ -1488,7 +1491,7 @@ class TurkishMorphotactics:
         nPresent_S.add(nA3pl_ST, "lAr",
                        not_have(RootAttribute.CompoundP3sg)
                        # do not allow "okumak-lar"
-                       .and_not(PreviousGroupContainsMorpheme(inf1)).and_((allowA3plTrans)))
+                       .and_not(PreviousGroupContainsMorpheme(inf1)).and_(allowA3plTrans))
 
         # elma-ydı-m. Do not allow "elmaya-yım" (Oflazer accepts this)
         nPast_S.add(nA1sg_ST, "m", allowA1sgTrans)
@@ -1507,10 +1510,10 @@ class TurkishMorphotactics:
 
         # elma-ydı-lar.
         nPast_S.add(nA3pl_ST, "lAr",
-                    not_have(RootAttribute.CompoundP3sg).and_((allowA3plTrans)))
+                    not_have(RootAttribute.CompoundP3sg).and_(allowA3plTrans))
         # elma-ymış-lar.
         nNarr_S.add(nA3pl_ST, "lAr",
-                    not_have(RootAttribute.CompoundP3sg).and_((allowA3plTrans)))
+                    not_have(RootAttribute.CompoundP3sg).and_(allowA3plTrans))
 
         # elma-ydı-ε
         nPast_S.add_empty(nA3sg_ST)
@@ -1559,13 +1562,13 @@ class TurkishMorphotactics:
     def connect_pronoun_states(self):
         # ----------- Personal Pronouns ----------------------------
 
-        ben = self.lexicon.getItemById("ben_Pron_Pers")
-        sen = self.lexicon.getItemById("sen_Pron_Pers")
-        o = self.lexicon.getItemById("o_Pron_Pers")
-        biz = self.lexicon.getItemById("biz_Pron_Pers")
-        siz = self.lexicon.getItemById("siz_Pron_Pers")
-        falan = self.lexicon.getItemById("falan_Pron_Pers")
-        falanca = self.lexicon.getItemById("falanca_Pron_Pers")
+        ben = self.lexicon.get_item_by_id("ben_Pron_Pers")
+        sen = self.lexicon.get_item_by_id("sen_Pron_Pers")
+        o = self.lexicon.get_item_by_id("o_Pron_Pers")
+        biz = self.lexicon.get_item_by_id("biz_Pron_Pers")
+        siz = self.lexicon.get_item_by_id("siz_Pron_Pers")
+        falan = self.lexicon.get_item_by_id("falan_Pron_Pers")
+        falanca = self.lexicon.get_item_by_id("falanca_Pron_Pers")
 
         pronPers_S.add_empty(pA1sg_S, root_is(ben))
         pronPers_S.add_empty(pA2sg_S, root_is(sen))
@@ -1610,37 +1613,37 @@ class TurkishMorphotactics:
 
         # ------------ Demonstrative pronouns. ------------------------
 
-        bu = self.lexicon.getItemById("bu_Pron_Demons")
+        bu = self.lexicon.get_item_by_id("bu_Pron_Demons")
 
-        su = self.lexicon.getItemById("şu_Pron_Demons")
+        su = self.lexicon.get_item_by_id("şu_Pron_Demons")
 
-        o_demons = self.lexicon.getItemById("o_Pron_Demons")
+        o_demons = self.lexicon.get_item_by_id("o_Pron_Demons")
 
         pronDemons_S.add_empty(pA3sg_S)
         pronDemons_S.add(pA3pl_S, "nlAr")
 
         # ------------ Quantitiva Pronouns ----------------------------
 
-        birbiri = self.lexicon.getItemById("birbiri_Pron_Quant")
-        biri = self.lexicon.getItemById("biri_Pron_Quant")
-        bazi = self.lexicon.getItemById("bazı_Pron_Quant")
-        bircogu = self.lexicon.getItemById("birçoğu_Pron_Quant")
-        birkaci = self.lexicon.getItemById("birkaçı_Pron_Quant")
-        beriki = self.lexicon.getItemById("beriki_Pron_Quant")
-        cogu = self.lexicon.getItemById("çoğu_Pron_Quant")
-        cumlesi = self.lexicon.getItemById("cümlesi_Pron_Quant")
-        hep = self.lexicon.getItemById("hep_Pron_Quant")
-        herbiri = self.lexicon.getItemById("herbiri_Pron_Quant")
-        herkes = self.lexicon.getItemById("herkes_Pron_Quant")
-        hicbiri = self.lexicon.getItemById("hiçbiri_Pron_Quant")
-        hepsi = self.lexicon.getItemById("hepsi_Pron_Quant")
-        kimi = self.lexicon.getItemById("kimi_Pron_Quant")
-        kimse = self.lexicon.getItemById("kimse_Pron_Quant")
-        oburku = self.lexicon.getItemById("öbürkü_Pron_Quant")
-        oburu = self.lexicon.getItemById("öbürü_Pron_Quant")
-        tumu = self.lexicon.getItemById("tümü_Pron_Quant")
-        topu = self.lexicon.getItemById("topu_Pron_Quant")
-        umum = self.lexicon.getItemById("umum_Pron_Quant")
+        birbiri = self.lexicon.get_item_by_id("birbiri_Pron_Quant")
+        biri = self.lexicon.get_item_by_id("biri_Pron_Quant")
+        bazi = self.lexicon.get_item_by_id("bazı_Pron_Quant")
+        bircogu = self.lexicon.get_item_by_id("birçoğu_Pron_Quant")
+        birkaci = self.lexicon.get_item_by_id("birkaçı_Pron_Quant")
+        beriki = self.lexicon.get_item_by_id("beriki_Pron_Quant")
+        cogu = self.lexicon.get_item_by_id("çoğu_Pron_Quant")
+        cumlesi = self.lexicon.get_item_by_id("cümlesi_Pron_Quant")
+        hep = self.lexicon.get_item_by_id("hep_Pron_Quant")
+        herbiri = self.lexicon.get_item_by_id("herbiri_Pron_Quant")
+        herkes = self.lexicon.get_item_by_id("herkes_Pron_Quant")
+        hicbiri = self.lexicon.get_item_by_id("hiçbiri_Pron_Quant")
+        hepsi = self.lexicon.get_item_by_id("hepsi_Pron_Quant")
+        kimi = self.lexicon.get_item_by_id("kimi_Pron_Quant")
+        kimse = self.lexicon.get_item_by_id("kimse_Pron_Quant")
+        oburku = self.lexicon.get_item_by_id("öbürkü_Pron_Quant")
+        oburu = self.lexicon.get_item_by_id("öbürü_Pron_Quant")
+        tumu = self.lexicon.get_item_by_id("tümü_Pron_Quant")
+        topu = self.lexicon.get_item_by_id("topu_Pron_Quant")
+        umum = self.lexicon.get_item_by_id("umum_Pron_Quant")
 
         # we have separate A3pl and A3sg states for Quantitive Pronouns.
         # herkes and hep cannot be singular.
@@ -1698,9 +1701,9 @@ class TurkishMorphotactics:
         # ------------ Question Pronouns ----------------------------
         # `kim` (kim_Pron_Ques), `ne` and `nere`
 
-        ne = self.lexicon.getItemById("ne_Pron_Ques")
-        nere = self.lexicon.getItemById("nere_Pron_Ques")
-        kim = self.lexicon.getItemById("kim_Pron_Ques")
+        ne = self.lexicon.get_item_by_id("ne_Pron_Ques")
+        nere = self.lexicon.get_item_by_id("nere_Pron_Ques")
+        kim = self.lexicon.get_item_by_id("kim_Pron_Ques")
         pronQues_S.add_empty(pQuesA3sg_S)
         pronQues_S.add(pQuesA3pl_S, "lAr")
 
@@ -1722,7 +1725,7 @@ class TurkishMorphotactics:
         # ------------ Reflexive Pronouns ----------------------------
         # `kendi`
 
-        kendi = self.lexicon.getItemById("kendi_Pron_Reflex")
+        kendi = self.lexicon.get_item_by_id("kendi_Pron_Reflex")
         pronReflex_S.add_all([(pReflexA1sg_S, ''),
                               (pReflexA2sg_S, ''),
                               (pReflexA3sg_S, ''),
@@ -1963,9 +1966,9 @@ class TurkishMorphotactics:
         postpZero_S.add_empty(nVerb_S)
 
         # gibi is kind of special.
-        gibiGen = self.lexicon.getItemById("gibi_Postp_PCGen")
-        gibiNom = self.lexicon.getItemById("gibi_Postp_PCNom")
-        sonraAbl = self.lexicon.getItemById("sonra_Postp_PCAbl")
+        gibiGen = self.lexicon.get_item_by_id("gibi_Postp_PCGen")
+        gibiNom = self.lexicon.get_item_by_id("gibi_Postp_PCNom")
+        sonraAbl = self.lexicon.get_item_by_id("sonra_Postp_PCAbl")
         postpZero_S.add_empty(po2nRoot_S, root_is_any(gibiGen, gibiNom, sonraAbl))
 
         po2nRoot_S.add_empty(po2nA3sg_S)
@@ -2547,7 +2550,7 @@ class TurkishMorphotactics:
         vWhile_S.add_empty(advRoot_ST)
         vWhen_S.add_empty(advNounRoot_ST)
 
-    def connectQuestion(self):
+    def connect_question(self):
         # mı
         questionRoot_S.add_empty(qPresent_S)
         # mıydı
@@ -2615,7 +2618,7 @@ class TurkishMorphotactics:
         qPresent_S.add(pvCopBeforeA3pl_S, "dIr")
         qCopBeforeA3pl_S.add(qA3pl_ST, "lAr")
 
-    def connectImek(self):
+    def connect_imek(self):
         # idi
         imekRoot_S.add(imekPast_S, "di")
         # imiş
@@ -2661,7 +2664,7 @@ class TurkishMorphotactics:
         imekA2pl_ST.add(imekCop_ST, "dir", rejectNoCopula)
         imekA3pl_ST.add(imekCop_ST, "dir", rejectNoCopula)
 
-    def handlePostProcessingConnections(self):
+    def handle_post_processing_connections(self):
 
         # Passive has an exception for some verbs like `kavurmak` or `savurmak`.
         # add passive state connection to modified root `kavr` etc.

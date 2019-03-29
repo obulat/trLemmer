@@ -234,7 +234,7 @@ class RootAttribute(Enum):
     Unknown = 0
 
 
-RootAttribute_set = set(list(RootAttribute))
+RootAttribute_set = {x.name: x for x in list(RootAttribute)}
 
 
 class PhoneticAttribute(Enum):
@@ -309,9 +309,13 @@ def calculate_phonetic_attributes(word: str, predecessor_attrs=None) -> List[Pho
     else:
         result.append(PhoneticAttribute.FirstLetterConsonant)
     if not tr.contains_vowel(word):
-        result.append(predecessor_attrs)
-        result.append(no_vowel_attrs)
-        result.remove(attributes_to_remove)
+        result.extend(predecessor_attrs)
+        result.extend(no_vowel_attrs)
+        if PhoneticAttribute.LastLetterVowel in result:
+            result.remove(PhoneticAttribute.LastLetterVowel)
+        if PhoneticAttribute.ExpectsConsonant in result:
+            result.remove(PhoneticAttribute.ExpectsConsonant)
+
     return result
 
 

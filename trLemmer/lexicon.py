@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 from trLemmer.attributes import RootAttribute, PrimaryPos, SecondaryPos, RootAttribute_set, primary_pos_set, \
-    secondary_pos_set, PhoneticAttribute, calculate_phonetic_attributes
+    secondary_pos_set
 from trLemmer import tr
 
 
@@ -54,7 +54,6 @@ class TextLexiconProcessor:
     def __init__(self, lexicon):
         self.lexicon = lexicon
         self.late_entries = []
-        self.resources_folder = Path(__file__).parent / 'resources'
 
     def process_lines(self, lines):
         for line in lines:
@@ -64,21 +63,24 @@ class TextLexiconProcessor:
         line = line.strip()
         if len(line) == 0 or line.startswith("##"):
             return
-        try:
-            line_data = parse_line_data(line)
-            # if a line contains references to other lines, we add them to lexicon later.
 
+        line_data = parse_line_data(line)
+        # if a line contains references to other lines, we add them to lexicon later.
+        try:
             if MetaDataId.REF_ID not in line_data['metadata'] and MetaDataId.ROOTS not in line_data['metadata']:
-                dict_item = self.parse_dict_item(line_data)
-                self.lexicon.add(dict_item)
+                    dict_item = self.parse_dict_item(line_data)
+                    if dict_item is not None:
+                        self.lexicon.add(dict_item)
+                    else:
+                        print(f"Dict item is none: {line_data}")
             else:
                 self.late_entries.append(line_data)
         except Exception as e:
-            print(e)
+            print(f"Exception {e} raised while adding dict item from {line_data}")
 
     @staticmethod
     def is_verb(word):
-        return len(word) > 3 and (word.endswith('mek') or word.endswith('mak')) and tr.is_lower_case(word[0])
+        return len(word) > 3 and (word.endswith('mek') or word.endswith('mak')) and tr.is_lower(word[0])
 
     @staticmethod
     def infer_primary_pos(word):
@@ -130,7 +132,11 @@ class TextLexiconProcessor:
                         primary_pos = PrimaryPos(token)  # TODO: Test this works
                         continue
                     else:
-                        raise ValueError(f"Multiple primary pos in data chunk: {pos_str}")
+                        if pos_str == "Pron,Ques":
+                            primary_pos = PrimaryPos("Pron")
+                            secondary_pos = SecondaryPos("Ques")
+                        else:
+                            raise ValueError(f"Multiple primary pos in data chunk: {pos_str}")
                 elif token in secondary_pos_set:
                     if secondary_pos is None:
                         secondary_pos = SecondaryPos(token)  # TODO: Test this works
@@ -178,13 +184,14 @@ class TextLexiconProcessor:
                                                                pos_info)
         if pronunciation_guessed and (
             secondary_pos == SecondaryPos.ProperNoun or secondary_pos == SecondaryPos.Abbreviation):
-            attributes += RootAttribute.PronunciationGuessed
+            attributes.append(RootAttribute.PronunciationGuessed)
             # here if there is an item with same lemma and pos values but attributes are different,
             # we increment the index.
         while True:
             id_ = generate_dict_id(word, pos_info.primary_pos, secondary_pos, index)
             existing_item = self.lexicon.id_dict.get(id_)
-            if existing_item is not None and id_ == existing_item.id__:
+
+            if existing_item is not None and id_ == existing_item.id_:
                 if set(attributes).intersection(set(existing_item.attributes)) == set(attributes):
                     print(f"Item already defined: {existing_item}")
                 else:
@@ -192,6 +199,7 @@ class TextLexiconProcessor:
             else:
                 break
         try:
+
             return DictionaryItem(
                 word,
                 clean_word,
@@ -201,7 +209,7 @@ class TextLexiconProcessor:
                 pronunciation,
                 index)
         except Exception as e:
-            print(f"Couldnt create dictionary item, error: {e}")
+            print(f"Couldn't create {word}/{index}/ {type(index)} dictionary item, error: {e} ")
 
     def get_result(self):
         for entry in self.late_entries:
@@ -248,7 +256,7 @@ class TextLexiconProcessor:
                     fake_root.attributes.append(RootAttribute.Dummy)
                     if RootAttribute.Voicing in fake_root.attributes:
                         fake_root.attributes.remove(RootAttribute.Voicing)
-                        fake_root.reference_item = item
+                    fake_root.reference_item = item
                     self.lexicon.add(fake_root)
         return self.lexicon
 
@@ -260,10 +268,11 @@ class TextLexiconProcessor:
             #  if (!posData.primaryPos.equals(PrimaryPos.Punctuation))
             attrs = TextLexiconProcessor.infer_morphemic_attributes(word, pos_data, attrs)
         else:
-            for s in data.split(","):
+            tokens = [_.strip() for _ in data.split(",")]
+            for s in tokens:
                 if s not in RootAttribute_set:
-                    raise ValueError(f"Unrecognized attribute data[{s}] in data chunk: [{data}]")
-                root_attribute = RootAttribute(s)
+                    raise ValueError(f"Unrecognized attribute data {s} in data chunk:{data}")
+                root_attribute = RootAttribute_set.get(s)
                 attrs.append(root_attribute)
             attrs = TextLexiconProcessor.infer_morphemic_attributes(word, pos_data, attrs)
         return attrs
@@ -292,12 +301,12 @@ class TextLexiconProcessor:
         elif pos_data.primary_pos.value in ['Noun', 'Adjective', 'Duplicator']:
             # if a noun or adjective has more than one syllable and last letter is a stop consonant, add voicing.
             if vowel_count > 1 \
-                and tr.is_stop_consonant(last) \
+                and tr.is_voiceless_stop_consonant(last) \
                 and pos_data.secondary_pos not in [SecondaryPos.ProperNoun, SecondaryPos.Abbreviation] \
                 and RootAttribute.NoVoicing not in result \
                 and RootAttribute.InverseHarmony not in result:
                 result.append(RootAttribute.Voicing)
-            if word[-2:] in ['nk', 'og']:
+            if len(word) > 1 and word[-2:] in ['nk', 'og']:
                 if RootAttribute.NoVoicing not in result and pos_data.secondary_pos != SecondaryPos.ProperNoun:
                     result.append(RootAttribute.Voicing)
                 elif vowel_count < 2 and RootAttribute.Voicing not in result:
@@ -305,13 +314,13 @@ class TextLexiconProcessor:
         return result
 
 
-def generate_dict_id(lemma, primary_pos, secondary_pos, index):
-    result = [lemma, primary_pos.name]  # TODO: Check that name is the shortForm
+def generate_dict_id(lemma: str, primary_pos: PrimaryPos, secondary_pos: SecondaryPos, index):
+    result = f"{lemma}_{primary_pos.name}"
     if secondary_pos is not None and secondary_pos != SecondaryPos.NONE:
-        result.append(secondary_pos.name)
+        result = f"{result}_{secondary_pos.name}"
     if index > 0:
-        result.append(index)
-    return '_'.join(result)
+        result = f"{result}_{index}"
+    return result
 
 
 class DictionaryItem:
@@ -376,7 +385,7 @@ class DictionaryItem:
         if self.secondary_pos is not None and self.secondary_pos != SecondaryPos.NONE:
             result.append(self.secondary_pos.value)
         if self.index > 0:
-            result.append(self.index)
+            result.append(str(self.index))
         return '_'.join(result)
 
     def __hash__(self):
@@ -387,11 +396,15 @@ class DictionaryItem:
 
 
 class RootLexicon:
-    DEFAULT_DICTIONARY_RESOURCES = ["tr/master-dictionary.dict", "tr/non-tdk.dict",
-                                    "tr/proper.dict",
-                                    "tr/proper-from-corpus.dict",
-                                    "tr/abbreviations.dict",
-                                    "tr/person-names.dict"]
+    RESOURCES_DIR = Path(__file__).parent / 'resources'
+    DEFAULT_DICTIONARY_RESOURCES = [
+        "tr/master-dictionary.dict"  # ,
+        # "tr/non-tdk.dict",
+        # "tr/proper.dict",
+        # "tr/proper-from-corpus.dict",
+        # "tr/abbreviations.dict",
+        # "tr/person-names.dict"
+    ]
 
     def __init__(self):
         self.item_set = set()
@@ -401,8 +414,15 @@ class RootLexicon:
     @classmethod
     def default_text_dictionaries(cls):
         lexicon = cls()
-        # TODO: get lines from TurkishDictionaryLoader.DEFAULT_DICTIONARY_RESOURCES
         lines = []
+        print(f"CWD: {Path.cwd()}; resources dir: {cls.RESOURCES_DIR}")
+        # TODO: get lines from TurkishDictionaryLoader.DEFAULT_DICTIONARY_RESOURCES
+        for resource in cls.DEFAULT_DICTIONARY_RESOURCES:
+            dict_path = cls.RESOURCES_DIR / resource
+            print(f"Dict path: {dict_path}")
+            new_lines = Path(cls.RESOURCES_DIR / resource).read_text(encoding='utf8').split('\n')
+            print(new_lines)
+            lines.extend(new_lines)
         processor = TextLexiconProcessor(lexicon)
         processor.process_lines(lines)
         return lexicon
@@ -428,15 +448,13 @@ class RootLexicon:
         items = self.item_dict.get(lemma)
         return [] if items is None else items
 
-    def getItemById(self, id_):
+    def get_item_by_id(self, id_):
         return self.id_dict.get(id_, None)
 
     def remove(self, item):
         self.item_dict.get(item.lemma)  # TODO: test if works
         self.id_dict.pop(item.id_)
         self.item_set.remove(item)
-
-
 
     def __len__(self):
         return len(self.item_dict)
