@@ -1,6 +1,6 @@
 from collections import namedtuple
 import sys, os
-from typing import List
+from typing import List, NamedTuple
 
 sys.path.pop(0)
 print(sys.path)
@@ -17,7 +17,13 @@ from trLemmer.conditions import Condition, not_have, has, ContainsMorpheme, NotC
     RootSurfaceIs, root_is_none, LastDerivationIsAny, previous_morpheme_is_not, last_derivation_is
 from trLemmer.lexicon import DictionaryItem, RootLexicon
 
-Morpheme = namedtuple("Morpheme", "name id_ pos derivational informal")
+
+class Morpheme(NamedTuple):
+    name: str
+    id_: str
+    pos: bool = PrimaryPos
+    derivational: bool = False
+    informal: bool = False
 
 
 class MorphemeState:
