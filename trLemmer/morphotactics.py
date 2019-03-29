@@ -1,5 +1,6 @@
 from collections import namedtuple
 import sys, os
+from typing import List, Set, NamedTuple
 from typing import List, NamedTuple
 
 sys.path.pop(0)
@@ -772,7 +773,7 @@ class StemTransitionsMapBased:
             transition = StemTransition(
                 dict_item.root,
                 dict_item,
-                phonetic_attrs,
+                phonetic_attrs.copy(),
                 self.morphotactics.get_root_state(dict_item, phonetic_attrs)
             )
         return [transition]
@@ -780,7 +781,7 @@ class StemTransitionsMapBased:
     def generate_modified_root_nodes(self, dict_item: DictionaryItem):
         result = list(dict_item.pronunciation)
         original_attrs = calculate_phonetic_attributes(dict_item.pronunciation)
-        modified_attrs = original_attrs
+        modified_attrs = original_attrs.copy()
         modified_root_state = None
         unmodified_root_state = None
         for attr in dict_item.attributes:
@@ -793,43 +794,43 @@ class StemTransitionsMapBased:
                     voiced = 'g'
                 result[-1] = voiced
                 if PhoneticAttribute.LastLetterVoicelessStop in modified_attrs:
-                    modified_attrs.remove(PhoneticAttribute.LastLetterVoicelessStop)
-                original_attrs.append(PhoneticAttribute.ExpectsConsonant)
-                modified_attrs.append(PhoneticAttribute.ExpectsVowel)
-                modified_attrs.append(PhoneticAttribute.CannotTerminate)
+                    modified_attrs.discard(PhoneticAttribute.LastLetterVoicelessStop)
+                original_attrs.add(PhoneticAttribute.ExpectsConsonant)
+                modified_attrs.add(PhoneticAttribute.ExpectsVowel)
+                modified_attrs.add(PhoneticAttribute.CannotTerminate)
             elif attr == RootAttribute.Doubling:
                 result.append(result[-1])
-                original_attrs.append(PhoneticAttribute.ExpectsConsonant)
-                modified_attrs.append(PhoneticAttribute.ExpectsVowel)
-                modified_attrs.append(PhoneticAttribute.CannotTerminate)
+                original_attrs.add(PhoneticAttribute.ExpectsConsonant)
+                modified_attrs.add(PhoneticAttribute.ExpectsVowel)
+                modified_attrs.add(PhoneticAttribute.CannotTerminate)
             elif attr == RootAttribute.LastVowelDrop:
                 last_letter = result[-1]
                 if tr.is_vowel(last_letter):
                     result.pop()
-                    modified_attrs.append(PhoneticAttribute.ExpectsConsonant)
-                    modified_attrs.append(PhoneticAttribute.CannotTerminate)
+                    modified_attrs.add(PhoneticAttribute.ExpectsConsonant)
+                    modified_attrs.add(PhoneticAttribute.CannotTerminate)
                 else:
                     result.pop(-2)
                     if dict_item.primary_pos != PrimaryPos.Verb:
-                        original_attrs.append(PhoneticAttribute.ExpectsConsonant)
+                        original_attrs.add(PhoneticAttribute.ExpectsConsonant)
                     else:
                         unmodified_root_state = verbLastVowelDropUnmodRoot_S
                         modified_root_state = verbLastVowelDropModRoot_S
-                modified_attrs.append(PhoneticAttribute.ExpectsVowel)
-                modified_attrs.append(PhoneticAttribute.CannotTerminate)
+                modified_attrs.add(PhoneticAttribute.ExpectsVowel)
+                modified_attrs.add(PhoneticAttribute.CannotTerminate)
             elif attr == RootAttribute.InverseHarmony:
-                original_attrs.append(PhoneticAttribute.LastVowelFrontal)
+                original_attrs.add(PhoneticAttribute.LastVowelFrontal)
                 if PhoneticAttribute.LastVowelBack in original_attrs:
-                    original_attrs.remove(PhoneticAttribute.LastVowelBack)
-                modified_attrs.append(PhoneticAttribute.LastVowelFrontal)
+                    original_attrs.discard(PhoneticAttribute.LastVowelBack)
+                modified_attrs.add(PhoneticAttribute.LastVowelFrontal)
                 if PhoneticAttribute.LastVowelBack in modified_attrs:
-                    modified_attrs.remove(PhoneticAttribute.LastVowelBack)
+                    modified_attrs.discard(PhoneticAttribute.LastVowelBack)
             elif attr == RootAttribute.ProgressiveVowelDrop:
                 if len(result) > 1:
                     result.pop()
                     if tr.contains_vowel(''.join(result)):
                         modified_attrs = calculate_phonetic_attributes(''.join(result))
-                    modified_attrs.append(PhoneticAttribute.LastLetterDropped)
+                    modified_attrs.add(PhoneticAttribute.LastLetterDropped)
             else:
                 continue
         if unmodified_root_state is None:
@@ -837,7 +838,7 @@ class StemTransitionsMapBased:
         original = StemTransition(
             dict_item.root,
             dict_item,
-            original_attrs,
+            original_attrs.copy(),
             unmodified_root_state
         )
         if modified_root_state is None:
@@ -845,7 +846,7 @@ class StemTransitionsMapBased:
         modified = StemTransition(
             ''.join(result),
             dict_item,
-            modified_attrs,
+            modified_attrs.copy(),
             modified_root_state
         )
 
@@ -863,7 +864,7 @@ class StemTransitionsMapBased:
 
         if item_id in ["içeri_Noun", "içeri_Adj", "dışarı_Adj", "dışarı_Noun", "dışarı_Postp", "yukarı_Noun",
                        "ileri_Noun", "yukarı_Adj", "şura_Noun", "bura_Noun", "ora_Noun"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs, unmodified_root_state)
+            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), unmodified_root_state)
             root_for_modified = None
             if dict_item.primary_pos == PrimaryPos.Noun:
                 root_for_modified = nounLastVowelDropRoot_S
@@ -878,22 +879,22 @@ class StemTransitionsMapBased:
 
             m = dict_item.root[:-1]
             modified = StemTransition(m, dict_item, calculate_phonetic_attributes(m), root_for_modified)
-            modified.attrs.append(PhoneticAttribute.ExpectsConsonant)
-            modified.attrs.append(PhoneticAttribute.CannotTerminate)
+            modified.attrs.add(PhoneticAttribute.ExpectsConsonant)
+            modified.attrs.add(PhoneticAttribute.CannotTerminate)
             return [original, modified]
         elif item_id in ["ben_Pron_Pers", "sen_Pron_Pers"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs, unmodified_root_state)
+            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), unmodified_root_state)
             if dict_item.lemma == "ben":
                 modified = StemTransition("ban", dict_item, calculate_phonetic_attributes("ban"),
                                           pronPers_Mod_S)
             else:
                 modified = StemTransition("san", dict_item, calculate_phonetic_attributes("san"),
                                           pronPers_Mod_S)
-            original.attrs.append(PhoneticAttribute.UnModifiedPronoun)
-            modified.attrs.append(PhoneticAttribute.ModifiedPronoun)
+            original.attrs.add(PhoneticAttribute.UnModifiedPronoun)
+            modified.attrs.add(PhoneticAttribute.ModifiedPronoun)
             return [original, modified]
         elif item_id in ["demek_Verb", "yemek_Verb"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs, vDeYeRoot_S)
+            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), vDeYeRoot_S)
             if dict_item.lemma == "demek":
                 modified = StemTransition("di", dict_item, calculate_phonetic_attributes("di"),
                                           vDeYeRoot_S)
@@ -902,15 +903,15 @@ class StemTransitionsMapBased:
                                           vDeYeRoot_S)
             return [original, modified]
         elif item_id == "imek_Verb":
-            original = StemTransition(dict_item.root, dict_item, original_attrs, imekRoot_S)
+            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), imekRoot_S)
             return [original]
         elif item_id in special_item_dict:
-            original = StemTransition(dict_item.root, dict_item, original_attrs, pronQuant_S)
+            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), pronQuant_S)
             modified_root = special_item_dict[item_id]
             modified = StemTransition(modified_root, dict_item, calculate_phonetic_attributes(modified_root),
                                       pronQuantModified_S)
-            original.attrs.append(PhoneticAttribute.UnModifiedPronoun)
-            modified.attrs.append(PhoneticAttribute.ModifiedPronoun)
+            original.attrs.add(PhoneticAttribute.UnModifiedPronoun)
+            modified.attrs.add(PhoneticAttribute.ModifiedPronoun)
             return [original, modified]
         else:
             raise ValueError(f"Lexicon Item with special stem change cannot be handled: {dict_item}")
@@ -2688,9 +2689,9 @@ class TurkishMorphotactics:
         # those modified roots are connected to a separate root state called verbRoot_VowelDrop_S.
         if PhoneticAttribute.LastLetterDropped in attrs:
             return verbRoot_VowelDrop_S
-        if dict_item.has_root_attribute(RootAttribute.Reciprocal):
+        if dict_item.has_attribute(RootAttribute.Reciprocal):
             return vImplicitRecipRoot_S
-        if dict_item.has_root_attribute(RootAttribute.Reflexive):
+        if dict_item.has_attribute(RootAttribute.Reflexive):
             return vImplicitReflexRoot_S
         if dict_item.primary_pos == PrimaryPos.Noun:
             if dict_item.secondary_pos == SecondaryPos.ProperNoun:
@@ -2702,7 +2703,7 @@ class TurkishMorphotactics:
                 return nounProper_S
             elif dict_item.secondary_pos in [SecondaryPos.Emoticon, SecondaryPos.RomanNumeral]:
                 return nounNoSuffix_S
-            if dict_item.has_root_attribute(RootAttribute.CompoundP3sgRoot):
+            if dict_item.has_attribute(RootAttribute.CompoundP3sgRoot):
                 return nounCompoundRoot_S
             else:
                 return noun_S
@@ -2768,7 +2769,7 @@ class MorphemeTransition:
 
 
 class StemTransition(MorphemeTransition):
-    def __init__(self, surface: str, dict_item: DictionaryItem, attrs: List,  # [PhoneticAttribute, RootAttribute],
+    def __init__(self, surface: str, dict_item: DictionaryItem, attrs: Set,
                  to_: MorphemeState):
         super().__init__(None, to_, None)
         self.surface = surface
@@ -2988,7 +2989,7 @@ class SearchPath:
     def __init__(self, tail: str,
                  current_state: MorphemeState,
                  transitions: List[SurfaceTransition],
-                 phonetic_attributes: List[PhoneticAttribute],
+                 phonetic_attributes: Set[PhoneticAttribute],
                  terminal: bool):
         self.tail = tail
         self.current_state = current_state
@@ -3018,7 +3019,7 @@ class SearchPath:
     def __repr__(self):
         return str(self)
 
-    def copy(self, surface_node: SurfaceTransition, phonetic_attributes: List):
+    def copy(self, surface_node: SurfaceTransition, phonetic_attributes: Set):
         is_terminal = surface_node.state.terminal
         hist = self.transitions[:]
         hist.append(surface_node)
@@ -3027,7 +3028,7 @@ class SearchPath:
             new_tail,
             surface_node.state,
             hist,
-            phonetic_attributes[:],
+            phonetic_attributes.copy(),
             is_terminal)
         path.contains_suffix_with_surface = self.contains_suffix_with_surface or len(surface_node.surface) == 0
         path.contains_derivation = self.contains_derivation or surface_node.state.derivative
@@ -3057,10 +3058,3 @@ class SearchPath:
     @property
     def dict_item(self):
         return self.stem_transition.dict_item
-
-
-if __name__ == '__main__':
-    attr = [PhoneticAttribute.LastVowelUnrounded, PhoneticAttribute.LastVowelBack]
-    trans = SuffixTransition(verbRoot_S, vPast_S, '>dI', has(PhoneticAttribute.ExpectsVowel))
-    surf = generate_surface(trans, attr)
-    print(f"Surface: {surf}")

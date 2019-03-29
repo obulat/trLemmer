@@ -1,10 +1,10 @@
 from collections import namedtuple
 from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import List, Set
 
-from trLemmer.attributes import RootAttribute, PrimaryPos, SecondaryPos, RootAttribute_set, primary_pos_set, \
-    secondary_pos_set
+from trLemmer.attributes import RootAttribute, PrimaryPos, SecondaryPos, primary_pos_set, \
+    secondary_pos_set, morphemic_attributes
 from trLemmer import tr
 
 
@@ -68,11 +68,11 @@ class TextLexiconProcessor:
         # if a line contains references to other lines, we add them to lexicon later.
         try:
             if MetaDataId.REF_ID not in line_data['metadata'] and MetaDataId.ROOTS not in line_data['metadata']:
-                    dict_item = self.parse_dict_item(line_data)
-                    if dict_item is not None:
-                        self.lexicon.add(dict_item)
-                    else:
-                        print(f"Dict item is none: {line_data}")
+                dict_item = self.parse_dict_item(line_data)
+                if dict_item is not None:
+                    self.lexicon.add(dict_item)
+                else:
+                    print(f"Dict item is none: {line_data}")
             else:
                 self.late_entries.append(line_data)
         except Exception as e:
@@ -179,12 +179,12 @@ class TextLexiconProcessor:
         else:
             pronunciation = tr.lower(pronunciation)
 
-        attributes = TextLexiconProcessor.morphemic_attributes(metadata.get(MetaDataId.ATTRIBUTES),
+        attributes = morphemic_attributes(metadata.get(MetaDataId.ATTRIBUTES),
                                                                pronunciation,
                                                                pos_info)
         if pronunciation_guessed and (
             secondary_pos == SecondaryPos.ProperNoun or secondary_pos == SecondaryPos.Abbreviation):
-            attributes.append(RootAttribute.PronunciationGuessed)
+            attributes.add(RootAttribute.PronunciationGuessed)
             # here if there is an item with same lemma and pos values but attributes are different,
             # we increment the index.
         while True:
@@ -192,7 +192,7 @@ class TextLexiconProcessor:
             existing_item = self.lexicon.id_dict.get(id_)
 
             if existing_item is not None and id_ == existing_item.id_:
-                if set(attributes).intersection(set(existing_item.attributes)) == set(attributes):
+                if attributes & existing_item.attributes == attributes:
                     print(f"Item already defined: {existing_item}")
                 else:
                     index += 1
@@ -200,14 +200,8 @@ class TextLexiconProcessor:
                 break
         try:
 
-            return DictionaryItem(
-                word,
-                clean_word,
-                pos_info.primary_pos,
-                secondary_pos,
-                attributes,
-                pronunciation,
-                index)
+            return DictionaryItem(word, clean_word, pos_info.primary_pos, secondary_pos, attributes, pronunciation,
+                                  index)
         except Exception as e:
             print(f"Couldn't create {word}/{index}/ {type(index)} dictionary item, error: {e} ")
 
@@ -242,76 +236,23 @@ class TextLexiconProcessor:
                     ref_item = sorted(ref_items, key=lambda item: item['index'])[0]
                     attr_set = ref_item.attrs
                 else:
-                    attr_set = TextLexiconProcessor.morphemic_attributes(None, root, pos_info)
+                    attr_set = morphemic_attributes(None, root, pos_info)
 
-                attr_set.append(RootAttribute.CompoundP3sgRoot)
+                attr_set.add(RootAttribute.CompoundP3sgRoot)
                 if RootAttribute.Ext in item.attributes:
-                    attr_set.append(RootAttribute.Ext)
+                    attr_set.add(RootAttribute.Ext)
                 index = 0
                 if self.lexicon.id_dict.get(f"{root}_{item.primary_pos.value}") is not None:
                     # TODO: Test _value_ works here for short_form
                     # generate a fake lemma for atkuyruk, use kuyruk's attributes.
                     # But do not allow voicing.
                     fake_root = DictionaryItem(root, root, item.primary_pos, item.secondary_pos, attr_set, index)
-                    fake_root.attributes.append(RootAttribute.Dummy)
+                    fake_root.attributes.add(RootAttribute.Dummy)
                     if RootAttribute.Voicing in fake_root.attributes:
                         fake_root.attributes.remove(RootAttribute.Voicing)
                     fake_root.reference_item = item
                     self.lexicon.add(fake_root)
         return self.lexicon
-
-    # TODO: check indentation
-    @staticmethod
-    def morphemic_attributes(data, word, pos_data) -> List:
-        attrs = []
-        if data is None:
-            #  if (!posData.primaryPos.equals(PrimaryPos.Punctuation))
-            attrs = TextLexiconProcessor.infer_morphemic_attributes(word, pos_data, attrs)
-        else:
-            tokens = [_.strip() for _ in data.split(",")]
-            for s in tokens:
-                if s not in RootAttribute_set:
-                    raise ValueError(f"Unrecognized attribute data {s} in data chunk:{data}")
-                root_attribute = RootAttribute_set.get(s)
-                attrs.append(root_attribute)
-            attrs = TextLexiconProcessor.infer_morphemic_attributes(word, pos_data, attrs)
-        return attrs
-
-    @staticmethod
-    def infer_morphemic_attributes(word, pos_data, attrs: List) -> List:
-        result = attrs
-        last = word[-1]
-        last_char_is_vowel = tr.is_vowel(last)
-        vowel_count = tr.vowel_count(word)
-        if pos_data.primary_pos == PrimaryPos.Verb:
-            #  if a verb ends with a wovel, and -Iyor suffix is appended, last vowel drops.
-            if last_char_is_vowel:
-                result.append(RootAttribute.ProgressiveVowelDrop)
-                result.append(RootAttribute.Passive_In)
-            # if verb has more than 1 syllable and there is no Aorist_A label, add Aorist_I.
-            if vowel_count > 1 and RootAttribute.Aorist_A not in result:
-                result.append(RootAttribute.Aorist_I)
-            # if verb has 1 syllable and there is no Aorist_I label, add Aorist_A
-            if vowel_count == 1 and RootAttribute.Aorist_A not in result:
-                result.append(RootAttribute.Aorist_A)
-            if last == 'l':
-                result.append(RootAttribute.Passive_In)
-            if last_char_is_vowel or (last == 'l' or last == 'r') and vowel_count > 1:
-                result.append(RootAttribute.Causative_t)
-        elif pos_data.primary_pos.value in ['Noun', 'Adjective', 'Duplicator']:
-            # if a noun or adjective has more than one syllable and last letter is a stop consonant, add voicing.
-            if vowel_count > 1 \
-                and tr.is_voiceless_stop_consonant(last) \
-                and pos_data.secondary_pos not in [SecondaryPos.ProperNoun, SecondaryPos.Abbreviation] \
-                and RootAttribute.NoVoicing not in result \
-                and RootAttribute.InverseHarmony not in result:
-                result.append(RootAttribute.Voicing)
-            if len(word) > 1 and word[-2:] in ['nk', 'og']:
-                if RootAttribute.NoVoicing not in result and pos_data.secondary_pos != SecondaryPos.ProperNoun:
-                    result.append(RootAttribute.Voicing)
-                elif vowel_count < 2 and RootAttribute.Voicing not in result:
-                    result.append(RootAttribute.NoVoicing)
-        return result
 
 
 def generate_dict_id(lemma: str, primary_pos: PrimaryPos, secondary_pos: SecondaryPos, index):
@@ -345,8 +286,8 @@ class DictionaryItem:
     :type: int
     """
 
-    def __init__(self, lemma: str, root: str, primary_pos: PrimaryPos, secondary_pos: SecondaryPos,
-                 attrs: List, pronunciation: str, index: int):
+    def __init__(self, lemma: str, root: str, primary_pos: PrimaryPos, secondary_pos: SecondaryPos, attrs: Set,
+                 pronunciation: str, index: int):
         """
         :id_(str)is the unique ID of the item. It is generated from Pos and lemma.
         If there are multiple items with same POS and Lemma user needs to add an index for
@@ -367,18 +308,11 @@ class DictionaryItem:
         result = f"{self.lemma} [P:{self.primary_pos.value}]"
         return result
 
-    def has_any_root_attribute(self, root_attrs):
-        for attr in root_attrs:
-            if type(attr) != RootAttribute:
-                raise ValueError(f"Has any root attribute: wrong type {type(root_attrs)}/{root_attrs}")
-            if attr in self.attributes:
-                return True
-        return False
+    def has_any_attribute(self, root_attrs):
+        return bool(root_attrs & self.attributes)
 
-    def has_root_attribute(self, root_attr):
-        if type(root_attr) != RootAttribute:
-            raise ValueError(f"Has any root attribute: wrong type {type(root_attr)}/{root_attr}")
-        return root_attr in self.attributes
+    def has_attribute(self, attr):
+        return attr in self.attributes
 
     def generate_id(self):
         result = [self.lemma, self.primary_pos.value]  # shortForm is value

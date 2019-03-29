@@ -1,7 +1,6 @@
-from collections import namedtuple
-from enum import Flag, Enum, auto
+from enum import Enum, auto
 import sys
-from typing import List
+from typing import Set
 
 print(sys.path)
 sys.path.pop(0)
@@ -278,61 +277,92 @@ no_vowel_attrs = [PhoneticAttribute.LastLetterConsonant, PhoneticAttribute.First
                   PhoneticAttribute.HasNoVowel]
 
 
-def calculate_phonetic_attributes(word: str, predecessor_attrs=None) -> List[PhoneticAttribute]:
+def calculate_phonetic_attributes(word: str, predecessor_attrs=None) -> Set[PhoneticAttribute]:
     # the word should be in lower case
-    result = []
+    result = set()
     if len(word) == 0:
         return predecessor_attrs
     last_letter = word[-1]
     if last_letter in tr.vowels_lower_set:
-        result.append(PhoneticAttribute.LastLetterVowel)
+        result.add(PhoneticAttribute.LastLetterVowel)
         last_vowel = last_letter
     else:
-        result.append(PhoneticAttribute.LastLetterConsonant)
+        result.add(PhoneticAttribute.LastLetterConsonant)
         last_vowel = tr.get_last_vowel(word)
         if last_letter in tr.consonants_voiceless_set:
-            result.append(PhoneticAttribute.LastLetterConsonant)
-            result.append(PhoneticAttribute.LastLetterVoiceless)
+            result.add(PhoneticAttribute.LastLetterConsonant)
+            result.add(PhoneticAttribute.LastLetterVoiceless)
             if last_letter in tr.consonants_voiceless_stop_set:
-                result.append(PhoneticAttribute.LastLetterVoicelessStop)
+                result.add(PhoneticAttribute.LastLetterVoicelessStop)
     if last_vowel is not None:
         if last_vowel in tr.vowels_back_set:
-            result.append(PhoneticAttribute.LastVowelBack)
+            result.add(PhoneticAttribute.LastVowelBack)
         else:
-            result.append(PhoneticAttribute.LastVowelFrontal)
+            result.add(PhoneticAttribute.LastVowelFrontal)
         if last_vowel in tr.vowels_rounded_set:
-            result.append(PhoneticAttribute.LastVowelRounded)
+            result.add(PhoneticAttribute.LastVowelRounded)
         else:
-            result.append(PhoneticAttribute.LastVowelUnrounded)
+            result.add(PhoneticAttribute.LastVowelUnrounded)
     if word[0] in tr.vowels_lower_set:
-        result.append(PhoneticAttribute.FirstLetterVowel)
+        result.add(PhoneticAttribute.FirstLetterVowel)
     else:
-        result.append(PhoneticAttribute.FirstLetterConsonant)
+        result.add(PhoneticAttribute.FirstLetterConsonant)
     if not tr.contains_vowel(word):
-        result.extend(predecessor_attrs)
-        result.extend(no_vowel_attrs)
-        if PhoneticAttribute.LastLetterVowel in result:
-            result.remove(PhoneticAttribute.LastLetterVowel)
-        if PhoneticAttribute.ExpectsConsonant in result:
-            result.remove(PhoneticAttribute.ExpectsConsonant)
+        result.update(predecessor_attrs)
+        result.update(no_vowel_attrs)
+        result.discard(PhoneticAttribute.LastLetterVowel)
+        result.discard(PhoneticAttribute.ExpectsConsonant)
 
     return result
 
 
-if __name__ == '__main__':
-    import sys
+def morphemic_attributes(data, word: str, pos_data) -> Set:
+    attrs = set()
+    if data is None:
+        #  if (!posData.primaryPos.equals(PrimaryPos.Punctuation))
+        attrs = infer_morphemic_attributes(word, pos_data, attrs)
+    else:
+        tokens = [_.strip() for _ in data.split(",")]
+        for s in tokens:
+            if s not in RootAttribute_set:
+                raise ValueError(f"Unrecognized attribute data {s} in data chunk:{data}")
+            root_attribute = RootAttribute_set.get(s)
+            attrs.add(root_attribute)
+        attrs = infer_morphemic_attributes(word, pos_data, attrs)
+    return attrs
 
-    print(sys.path)
-    attr = calculate_phonetic_attributes('kedi')
-    print('Kedi: ', attr, type(attr))
 
-    print('\nSabah: ', calculate_phonetic_attributes('sabah'))
-
-    print('\nBlank: ', calculate_phonetic_attributes(''))
-
-    word = 'bankadan'
-    attr = calculate_phonetic_attributes(word)
-    attr2 = attr
-    print(f"Attr2 is a label for attr: {attr2}, {attr}")
-    attr.remove(PhoneticAttribute.LastLetterConsonant)
-    print(f"Attr2 is a label for attr: {attr2}, {attr}")
+def infer_morphemic_attributes(word:str, pos_data, attrs: Set) -> Set:
+    result = attrs
+    last = word[-1]
+    last_char_is_vowel = tr.is_vowel(last)
+    vowel_count = tr.vowel_count(word)
+    if pos_data.primary_pos == PrimaryPos.Verb:
+        #  if a verb ends with a wovel, and -Iyor suffix is appended, last vowel drops.
+        if last_char_is_vowel:
+            result.add(RootAttribute.ProgressiveVowelDrop)
+            result.add(RootAttribute.Passive_In)
+        # if verb has more than 1 syllable and there is no Aorist_A label, add Aorist_I.
+        if vowel_count > 1 and RootAttribute.Aorist_A not in result:
+            result.add(RootAttribute.Aorist_I)
+        # if verb has 1 syllable and there is no Aorist_I label, add Aorist_A
+        if vowel_count == 1 and RootAttribute.Aorist_A not in result:
+            result.add(RootAttribute.Aorist_A)
+        if last == 'l':
+            result.add(RootAttribute.Passive_In)
+        if last_char_is_vowel or (last == 'l' or last == 'r') and vowel_count > 1:
+            result.add(RootAttribute.Causative_t)
+    elif pos_data.primary_pos.value in ['Noun', 'Adjective', 'Duplicator']:
+        # if a noun or adjective has more than one syllable and last letter is a stop consonant, add voicing.
+        if vowel_count > 1 \
+            and tr.is_voiceless_stop_consonant(last) \
+            and pos_data.secondary_pos not in [SecondaryPos.ProperNoun, SecondaryPos.Abbreviation] \
+            and RootAttribute.NoVoicing not in result \
+            and RootAttribute.InverseHarmony not in result:
+            result.add(RootAttribute.Voicing)
+        if len(word) > 1 and word[-2:] in ['nk', 'og']:
+            if RootAttribute.NoVoicing not in result and pos_data.secondary_pos != SecondaryPos.ProperNoun:
+                result.add(RootAttribute.Voicing)
+            elif vowel_count < 2 and RootAttribute.Voicing not in result:
+                result.add(RootAttribute.NoVoicing)
+    return result

@@ -157,7 +157,7 @@ class HasRootAttribute(Condition):
         self.attribute = attribute
 
     def accept(self, path):
-        return path.dict_item.has_root_attribute(self.attribute)  # TODO test
+        return path.dict_item.has_attribute(self.attribute)  # TODO test
 
     def __str__(self):
         return f"HasRootAttribute[{self.attribute}]"
@@ -169,7 +169,7 @@ class HasAnyRootAttribute(Condition):
         self.attributes = attributes
 
     def accept(self, path):
-        return path.dict_item.has_any_root_attribute(self.attributes)
+        return path.dict_item.has_any_attribute(self.attributes)
 
     def __str__(self):
         return f"HasAnyRootAttribute[{self.attributes}]"
