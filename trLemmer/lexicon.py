@@ -149,7 +149,7 @@ class TextLexiconProcessor:
                 primary_pos = TextLexiconProcessor.infer_primary_pos(word)
 
             if secondary_pos is None:
-                secondary_pos = TextLexiconProcessor.infer_primary_pos(word)
+                secondary_pos = TextLexiconProcessor.infer_secondary_pos(word)
 
             return PosInfo(primary_pos, secondary_pos)
 
@@ -246,7 +246,7 @@ class TextLexiconProcessor:
                     # TODO: Test _value_ works here for short_form
                     # generate a fake lemma for atkuyruk, use kuyruk's attributes.
                     # But do not allow voicing.
-                    fake_root = DictionaryItem(root, root, item.primary_pos, item.secondary_pos, attr_set, index)
+                    fake_root = DictionaryItem(root, root, item.primary_pos, item.secondary_pos, attr_set, root, index)
                     fake_root.attributes.add(RootAttribute.Dummy)
                     if RootAttribute.Voicing in fake_root.attributes:
                         fake_root.attributes.remove(RootAttribute.Voicing)
@@ -255,7 +255,7 @@ class TextLexiconProcessor:
         return self.lexicon
 
 
-def generate_dict_id(lemma: str, primary_pos: PrimaryPos, secondary_pos: SecondaryPos, index):
+def generate_dict_id(lemma: str, primary_pos: PrimaryPos, secondary_pos: SecondaryPos, index: int):
     result = f"{lemma}_{primary_pos.name}"
     if secondary_pos is not None and secondary_pos != SecondaryPos.NONE:
         result = f"{result}_{secondary_pos.name}"
@@ -308,8 +308,16 @@ class DictionaryItem:
         result = f"{self.lemma} [P:{self.primary_pos.value}]"
         return result
 
+    def __repr__(self):
+        return f"DictionaryItem({self.id_})"
+
     def has_any_attribute(self, root_attrs):
-        return bool(root_attrs & self.attributes)
+        if type(root_attrs) == tuple:
+            print(f"{self.lemma} tuple in has any attributes")
+            print(f"Root attr: {set(root_attrs)}\nself.attributes: {self.attributes}")
+            print(set(root_attrs) & self.attributes)
+            print(bool(set(root_attrs) & self.attributes))
+        return bool(set(root_attrs) & self.attributes)
 
     def has_attribute(self, attr):
         return attr in self.attributes
@@ -351,9 +359,7 @@ class RootLexicon:
         lines = []
         for resource in cls.DEFAULT_DICTIONARY_RESOURCES:
             dict_path = cls.RESOURCES_DIR / resource
-            print(f"Dict path: {dict_path}")
             new_lines = Path(cls.RESOURCES_DIR / resource).read_text(encoding='utf8').split('\n')
-            print(new_lines)
             lines.extend(new_lines)
         processor = TextLexiconProcessor(lexicon)
         processor.process_lines(lines)

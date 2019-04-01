@@ -1,4 +1,6 @@
-from trLemmer.attributes import RootAttribute
+from typing import Union
+
+from trLemmer.attributes import RootAttribute, PhoneticAttribute
 
 
 class Condition:
@@ -77,6 +79,7 @@ class CombinedCondition(Condition):
         return result
 
 
+# tested
 def has(attribute):
     if type(attribute) == RootAttribute:
         return HasRootAttribute(attribute)
@@ -84,71 +87,12 @@ def has(attribute):
         return HasPhoneticAttribute(attribute)
 
 
-def root_is(dict_item):
-    return DictionaryItemIs(dict_item)
-
-
-def root_primary_pos(pos):
-    return RootPrimaryPosIs(pos)
-
-
-def root_is_any(*items):
-    return DictionaryItemIsAny(items)
-
-
-def root_is_none(*items):
-    return DictionaryItemIsNone(items)
-
-
-def not_have(attribute):
+# tested
+def not_have(attribute: Union[RootAttribute, PhoneticAttribute]):
     if type(attribute) == RootAttribute:
         return HasRootAttribute(attribute).not_()
     else:
         return HasPhoneticAttribute(attribute).not_()
-
-
-def not_have_any(*attributes):
-    return HasAnyRootAttribute(attributes).not_()
-
-
-def root_is_not(dict_item):
-    return DictionaryItemIs(dict_item).not_()
-
-
-def current_morpheme_is(morpheme):
-    return CurrentMorphemeIs(morpheme)
-
-
-def current_morpheme_is_any(*morphemes):
-    return CurrentMorphemeIsAny(morphemes)
-
-
-def last_morpheme_is_not(morpheme):
-    return CurrentMorphemeIs(morpheme).not_()
-
-
-def current_state_is(state):
-    return CurrentStateIs(state)
-
-
-def current_state_is_not(state):
-    return CurrentStateIsNot(state)
-
-
-def previous_state_is(state):
-    return PreviousStateIs(state)
-
-
-def previous_state_is_not(state):
-    return PreviousStateIsNot(state)
-
-
-def previous_morpheme_is(morpheme):
-    return PreviousMorphemeIs(morpheme)
-
-
-def previous_morpheme_is_not(morpheme):
-    return PreviousMorphemeIs(morpheme).not_()
 
 
 # tested
@@ -175,6 +119,7 @@ class HasAnyRootAttribute(Condition):
         return f"HasAnyRootAttribute({self.attributes})"
 
 
+# tested
 class HasPhoneticAttribute(Condition):
     def __init__(self, attribute):
         self.attribute = attribute
@@ -198,17 +143,6 @@ class DictionaryItemIs(Condition):
         return f"DictionaryItemIs({self.dict_item})"
 
 
-class RootPrimaryPosIs(Condition):
-    def __init__(self, pos):
-        self.pos = pos
-
-    def accept(self, path):
-        return path.dict_item.primary_pos == self.pos
-
-    def __repr__(self):
-        return f"RootPrimaryPosIs({self.pos})"
-
-
 class SecondaryPosIs(Condition):
     def __init__(self, pos):
         self.pos = pos
@@ -220,58 +154,36 @@ class SecondaryPosIs(Condition):
         return f"SecondaryPosIs[{self.pos}]"
 
 
+# tested
 class DictionaryItemIsAny(Condition):
-    def __init__(self, items):
+    def __init__(self, *items):
         # Temporary:
         self.items = [item for item in items if item is not None]
 
     def accept(self, path):
-        # print(f"Dictionary item is any: {path.dict_item}/ {self.items}")
         return path.dict_item in self.items
 
     def __repr__(self):
         return f"DictionaryItemIsAny({self.items})"
 
 
-class DictionaryItemIsNone(Condition):
-    def __init__(self, items):
-        # Temporary:
-        self.items = [item for item in items if item is not None]
-
-    def accept(self, path):
-        # print(f"Dictionary item is none: {path.dict_item}/ {self.items}")
-        return path.dict_item not in self.items
-
-    def __repr__(self):
-        return f"DictionaryItemIsNone({self.items})"
-
-
 class HasAnySuffixSurface(Condition):
 
     def accept(self, path):
-        return path.containsSuffixWithSurface()
+        return path.contains_suffix_with_surface
 
     def __repr__(self):
         return "HasAnySuffixSurface{}"
 
-
-# accepts if path has letters to consume.
+#tested
 class HasTail(Condition):
+    # accepts if path has letters to consume.
 
     def accept(self, path):
         return len(path.tail) != 0
 
     def __repr__(self):
         return "HasTail{}"
-
-
-class HasNoTail(Condition):
-
-    def accept(self, path):
-        return len(path.tail) == 0
-
-    def __repr__(self):
-        return "HasNoTail{}"
 
 
 class HasTailSequence(Condition):
@@ -284,10 +196,11 @@ class HasTailSequence(Condition):
             return False
         i = 0
         j = len(forms) - len(self.morphemes)
-        # while (i < len(self.morphemes):
-        #     if (morphemes[i++] != forms.get(j++).morpheme):
-        #         return False
-
+        while i < len(self.morphemes):
+            if self.morphemes[i + 1] != forms[j + 1].morpheme:
+                return False
+            i += 1
+            j += 1
         return True
 
     def __repr__(self):
@@ -316,17 +229,7 @@ class ContainsMorphemeSequence(Condition):
         return f"ContainsMorphemeSequence({self.morphemes})"
 
 
-class CurrentMorphemeIs(Condition):
-    def __init__(self, morpheme):
-        self.morpheme = morpheme
-
-    def accept(self, path):
-        return path.current_state.morpheme == self.morpheme
-
-    def __repr__(self):
-        return f"CurrentMorphemeIs({self.morpheme})"
-
-
+# tested
 class PreviousMorphemeIs(Condition):
     def __init__(self, morpheme):
         self.morpheme = morpheme
@@ -338,7 +241,7 @@ class PreviousMorphemeIs(Condition):
     def __repr__(self):
         return f"PreviousMorphemeIs({self.morpheme.id_})"
 
-
+# tested
 class PreviousStateIs(Condition):
     def __init__(self, state):
         self.state = state
@@ -351,6 +254,7 @@ class PreviousStateIs(Condition):
         return f"PreviousStateIs({self.state})"
 
 
+# tested
 class PreviousStateIsNot(Condition):
     def __init__(self, state):
         self.state = state
@@ -389,33 +293,7 @@ class RootSurfaceIsAny(Condition):
         return f"RootSurfaceIsAny({self.surfaces})"
 
 
-class CurrentStateIs(Condition):
-    def __init__(self, state):
-        self.state = state
-
-    def accept(self, path):
-        return path.current_state == self.state
-
-    def __repr__(self):
-        return f"CurrentStateIs({self.state})"
-
-
-class CurrentStateIsNot(Condition):
-
-    def __init__(self, state):
-        self.state = state
-
-    def accept(self, path):
-        return path.current_state != self.state
-
-    def __repr__(self):
-        return f"CurrentStateIsNot({self.state})"
-
-
-def last_derivation_is(state):
-    return LastDerivationIs(state)
-
-
+# tested
 class LastDerivationIs(Condition):
 
     def __init__(self, state):
@@ -432,6 +310,7 @@ class LastDerivationIs(Condition):
         return f"LastDerivationIs({self.state})"
 
 
+# tested
 class HasDerivation(Condition):
 
     def accept(self, path):
@@ -539,6 +418,7 @@ class PreviousGroupContainsMorpheme(Condition):
         return f"PreviousGroupContainsMorpheme({morpheme_str})"
 
 
+# tested
 class NoSurfaceAfterDerivation(Condition):
     """
     # No letters are consumed after derivation occurred. This does not include the transition
@@ -548,7 +428,7 @@ class NoSurfaceAfterDerivation(Condition):
     def accept(self, path):
         suffixes = path.transitions
         for sf in reversed(suffixes):
-            if sf.state.derivative or sf.is_derivational_or_root: #TODO: check this
+            if sf.state.derivative or sf.is_derivational_or_root:  # TODO: check this
                 return True
             if not len(sf.surface) == 0:
                 return False
@@ -586,19 +466,6 @@ class PreviousMorphemeIsAny(Condition):
         return f"PreviousMorphemeIsAny({self.morphemes})"
 
 
-class CurrentMorphemeIsAny(Condition):
-
-    def __init__(self, *morphemes):
-        self.morphemes = morphemes
-
-    def accept(self, path):
-        previous_state = path.current_state
-        return previous_state is not None and previous_state.morpheme in self.morphemes
-
-    def __repr__(self):
-        return f"CurrentMorphemeIsAny({self.morphemes})"
-
-
 class PreviousStateIsAny(Condition):
 
     def __init__(self, *states):
@@ -608,12 +475,3 @@ class PreviousStateIsAny(Condition):
         previous_state = path.previous_state
         return previous_state is not None and previous_state in self.states
 
-
-HAS_TAIL = HasTail()
-HAS_NO_TAIL = HasNoTail()
-HAS_SURFACE = HasAnySuffixSurface()
-HAS_NO_SURFACE = NotCondition(HasAnySuffixSurface())
-CURRENT_GROUP_EMPTY = NoSurfaceAfterDerivation()
-CURRENT_GROUP_NOT_EMPTY = NotCondition(NoSurfaceAfterDerivation())
-HAS_DERIVATION = HasDerivation()
-HAS_NO_DERIVATION = NotCondition(HasDerivation())

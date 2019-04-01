@@ -9,11 +9,11 @@ from trLemmer import tr
 from trLemmer.attributes import PrimaryPos, PhoneticAttribute, RootAttribute, SecondaryPos, \
     calculate_phonetic_attributes
 from trLemmer.conditions import Condition, not_have, has, ContainsMorpheme, NotCondition, SecondaryPosIs, \
-    HAS_NO_SURFACE, PreviousGroupContainsMorpheme, ContainsMorphemeSequence, NoSurfaceAfterDerivation, HasTailSequence, \
-    root_is_any, CURRENT_GROUP_EMPTY, HAS_TAIL, previous_state_is_not, previous_state_is, LastDerivationIs, \
-    previous_morpheme_is, PreviousMorphemeIs, root_is, PreviousMorphemeIsAny, CurrentGroupContainsAny, \
-    PreviousGroupContains, root_is_not, HAS_SURFACE, PreviousStateIsAny, RootSurfaceIsAny, \
-    RootSurfaceIs, root_is_none, LastDerivationIsAny, previous_morpheme_is_not, last_derivation_is
+    PreviousGroupContainsMorpheme, ContainsMorphemeSequence, NoSurfaceAfterDerivation, HasTailSequence, \
+    LastDerivationIs, PreviousMorphemeIs, DictionaryItemIs, PreviousMorphemeIsAny, \
+    CurrentGroupContainsAny, PreviousGroupContains, PreviousStateIsAny, RootSurfaceIsAny, RootSurfaceIs, \
+    LastDerivationIsAny, PreviousStateIs, HasRootAttribute, DictionaryItemIsAny, \
+    HasPhoneticAttribute, HasTail, HasAnySuffixSurface, PreviousStateIsNot
 from trLemmer.lexicon import DictionaryItem, RootLexicon
 
 
@@ -23,6 +23,9 @@ class Morpheme(NamedTuple):
     pos: Optional[PrimaryPos]
     derivational: bool = False
     informal: bool = False
+
+    def __eq__(self, other):
+        return self.id_ == other.id_
 
 
 class MorphemeState:
@@ -72,13 +75,13 @@ class MorphemeState:
         self.outgoing.append(transition)
         return self
 
-    def copyOutgoingTransitionsFrom(self, state):
+    def copy_outgoing_transitions_from(self, state):
         for transition in state.outgoing:
             copy = transition.get_copy()
             copy.from_ = self
             self.add_outgoing([transition])
 
-    def removeTransitionsTo(self, morpheme: Morpheme):
+    def remove_transitions_to(self, morpheme: Morpheme):
         transitions = []
         for transition in self.outgoing:
             if transition.to_.morpheme == morpheme:
@@ -767,13 +770,7 @@ class StemTransitionsMapBased:
         if has_modifier_attribute(dict_item):
             return self.generate_modified_root_nodes(dict_item)
         else:
-            phonetic_attrs = calculate_phonetic_attributes(dict_item.pronunciation)
-            transition = StemTransition(
-                dict_item.root,
-                dict_item,
-                phonetic_attrs.copy(),
-                self.morphotactics.get_root_state(dict_item, phonetic_attrs)
-            )
+            transition = StemTransition(dict_item, self.morphotactics.get_root_state(dict_item))
         return [transition]
 
     def generate_modified_root_nodes(self, dict_item: DictionaryItem):
@@ -833,20 +830,10 @@ class StemTransitionsMapBased:
                 continue
         if unmodified_root_state is None:
             unmodified_root_state = self.morphotactics.get_root_state(dict_item, original_attrs)
-        original = StemTransition(
-            dict_item.root,
-            dict_item,
-            original_attrs.copy(),
-            unmodified_root_state
-        )
+        original = StemTransition(dict_item, unmodified_root_state, original_attrs)
         if modified_root_state is None:
             modified_root_state = self.morphotactics.get_root_state(dict_item, modified_attrs)
-        modified = StemTransition(
-            ''.join(result),
-            dict_item,
-            modified_attrs.copy(),
-            modified_root_state
-        )
+        modified = StemTransition(dict_item, modified_root_state, modified_attrs, ''.join(result))
 
         if original == modified:
             return [original]
@@ -862,7 +849,7 @@ class StemTransitionsMapBased:
 
         if item_id in ["içeri_Noun", "içeri_Adj", "dışarı_Adj", "dışarı_Noun", "dışarı_Postp", "yukarı_Noun",
                        "ileri_Noun", "yukarı_Adj", "şura_Noun", "bura_Noun", "ora_Noun"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), unmodified_root_state)
+            original = StemTransition(dict_item, unmodified_root_state, original_attrs)
             root_for_modified = None
             if dict_item.primary_pos == PrimaryPos.Noun:
                 root_for_modified = nounLastVowelDropRoot_S
@@ -876,38 +863,36 @@ class StemTransitionsMapBased:
                 raise ValueError(f"No root morpheme state found for {dict_item}")
 
             m = dict_item.root[:-1]
-            modified = StemTransition(m, dict_item, calculate_phonetic_attributes(m), root_for_modified)
+            modified = StemTransition(dict_item, root_for_modified, calculate_phonetic_attributes(m), surface=m)
             modified.attrs.add(PhoneticAttribute.ExpectsConsonant)
             modified.attrs.add(PhoneticAttribute.CannotTerminate)
             return [original, modified]
         elif item_id in ["ben_Pron_Pers", "sen_Pron_Pers"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), unmodified_root_state)
+            original = StemTransition(dict_item, unmodified_root_state, original_attrs)
             if dict_item.lemma == "ben":
-                modified = StemTransition("ban", dict_item, calculate_phonetic_attributes("ban"),
-                                          pronPers_Mod_S)
+                modified = StemTransition(dict_item, pronPers_Mod_S, calculate_phonetic_attributes("ban"),
+                                          surface="ban")
             else:
-                modified = StemTransition("san", dict_item, calculate_phonetic_attributes("san"),
-                                          pronPers_Mod_S)
+                modified = StemTransition(dict_item, pronPers_Mod_S, calculate_phonetic_attributes("san"),
+                                          surface="san")
             original.attrs.add(PhoneticAttribute.UnModifiedPronoun)
             modified.attrs.add(PhoneticAttribute.ModifiedPronoun)
             return [original, modified]
         elif item_id in ["demek_Verb", "yemek_Verb"]:
-            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), vDeYeRoot_S)
+            original = StemTransition(dict_item, vDeYeRoot_S, original_attrs)
             if dict_item.lemma == "demek":
-                modified = StemTransition("di", dict_item, calculate_phonetic_attributes("di"),
-                                          vDeYeRoot_S)
+                modified = StemTransition(dict_item, vDeYeRoot_S, calculate_phonetic_attributes("di"), surface="di")
             else:
-                modified = StemTransition("yi", dict_item, calculate_phonetic_attributes("yi"),
-                                          vDeYeRoot_S)
+                modified = StemTransition(dict_item, vDeYeRoot_S, calculate_phonetic_attributes("yi"), surface="yi")
             return [original, modified]
         elif item_id == "imek_Verb":
-            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), imekRoot_S)
+            original = StemTransition(dict_item, imekRoot_S, original_attrs)
             return [original]
         elif item_id in special_item_dict:
-            original = StemTransition(dict_item.root, dict_item, original_attrs.copy(), pronQuant_S)
+            original = StemTransition(dict_item, pronQuant_S, original_attrs)
             modified_root = special_item_dict[item_id]
-            modified = StemTransition(modified_root, dict_item, calculate_phonetic_attributes(modified_root),
-                                      pronQuantModified_S)
+            modified = StemTransition(dict_item, pronQuantModified_S, calculate_phonetic_attributes(modified_root),
+                                      surface=modified_root)
             original.attrs.add(PhoneticAttribute.UnModifiedPronoun)
             modified.attrs.add(PhoneticAttribute.ModifiedPronoun)
             return [original, modified]
@@ -1047,10 +1032,10 @@ class TurkishMorphotactics:
         # for "zeytinyağsı"
         nom_S.add(justLike_S, "+msI", not_(ContainsMorpheme(justLike)))
         # for "zeytinyağcık"
-        nom_S.add(dim_S, ">cI~k", HAS_NO_SURFACE.and_not(ContainsMorpheme(dim)))
-        nom_S.add(dim_S, ">cI!ğ", HAS_NO_SURFACE.and_not(ContainsMorpheme(dim)))
+        nom_S.add(dim_S, ">cI~k", HasAnySuffixSurface().not_().and_not(ContainsMorpheme(dim)))
+        nom_S.add(dim_S, ">cI!ğ", HasAnySuffixSurface().not_().and_not(ContainsMorpheme(dim)))
         # "zeytinyağcağız"
-        nom_S.add(dim_S, "cAğIz", HAS_NO_SURFACE)
+        nom_S.add(dim_S, "cAğIz", HasAnySuffixSurface().not_())
 
         # for compound roots like "zeytinyağ-lar-ı" generate two transition
         # NounCompound--(lAr)--> a3plCompound ---> p3sg_S, P1sg etc.
@@ -1117,11 +1102,11 @@ class TurkishMorphotactics:
         # ev-?-ε-ε (ev, evler).
         pnon_S.add_empty(nom_ST, not_have(RootAttribute.FamilyMember))
 
-        equCond1 = ContainsMorpheme(adj, futPart, presPart, narrPart, pastPart).not_() or ContainsMorphemeSequence(able,
-                                                                                                                   verb,
-                                                                                                                   pastPart)
+        equCond1 = ContainsMorpheme(adj, futPart, presPart, narrPart, pastPart
+                                    ).not_().or_(ContainsMorphemeSequence(able, verb,
+                                                                          pastPart))
 
-        equCond = previous_morpheme_is(a3pl) or equCond1  # allow `yapabildiğince`
+        equCond = PreviousMorphemeIs(a3pl).or_(equCond1)  # allow `yapabildiğince`
 
         # Not allow "zetinyağı-ya" etc.
         pnon_S.add_all([
@@ -1129,21 +1114,21 @@ class TurkishMorphotactics:
             (abl_ST, ">dAn", not_have(RootAttribute.CompoundP3sg)),  # ev-den
             (loc_ST, ">dA", not_have(RootAttribute.CompoundP3sg)),  # evde
             (acc_ST, "+yI", not_have(RootAttribute.CompoundP3sg)),  # evi
-            (gen_ST, "+nIn", previous_state_is_not(a3sgSu_S)),  # evin, zeytinyağının
-            (gen_ST, "yIn", previous_state_is(a3sgSu_S)),  # suyun
+            (gen_ST, "+nIn", PreviousStateIsNot(a3sgSu_S)),  # evin, zeytinyağının
+            (gen_ST, "yIn", PreviousStateIs(a3sgSu_S)),  # suyun
             (equ_ST, ">cA", not_have(RootAttribute.CompoundP3sg).and_(equCond)),  # evce
             (ins_ST, "+ylA")  # evle, zeytinyağıyla
         ])
-        pnon_S.add_all([(dat_ST, "+nA", has(RootAttribute.CompoundP3sg)),  # zeytinyağı-na
-                        (abl_ST, "+ndAn", has(RootAttribute.CompoundP3sg)),  # zeytinyağı-ndan
-                        (loc_ST, "+ndA", has(RootAttribute.CompoundP3sg)),  # zeytinyağı-nda
-                        (equ_ST, "+ncA", has(RootAttribute.CompoundP3sg).and_(equCond)),  # zeytinyağı-nca
-                        (acc_ST, "+nI", has(RootAttribute.CompoundP3sg))  # zeytinyağı-nı
+        pnon_S.add_all([(dat_ST, "+nA", HasRootAttribute(RootAttribute.CompoundP3sg)),  # zeytinyağı-na
+                        (abl_ST, "+ndAn", HasRootAttribute(RootAttribute.CompoundP3sg)),  # zeytinyağı-ndan
+                        (loc_ST, "+ndA", HasRootAttribute(RootAttribute.CompoundP3sg)),  # zeytinyağı-nda
+                        (equ_ST, "+ncA", HasRootAttribute(RootAttribute.CompoundP3sg).and_(equCond)),  # zeytinyağı-nca
+                        (acc_ST, "+nI", HasRootAttribute(RootAttribute.CompoundP3sg))  # zeytinyağı-nı
                         ])
         # This transition is for words like "içeri" or "dışarı".
         # Those words implicitly contains Dative suffix.
         # But It is also possible to add dative suffix +yA to those words such as "içeri-ye".
-        pnon_S.add_empty(dat_ST, has(RootAttribute.ImplicitDative))
+        pnon_S.add_empty(dat_ST, HasRootAttribute(RootAttribute.ImplicitDative))
 
         p1sg_S.add_all([
             (nom_ST, ""),  # evim
@@ -1152,9 +1137,8 @@ class TurkishMorphotactics:
             (abl_ST, "dAn"),  # evimden
             (ins_ST, "lA"),  # evimle
             (gen_ST, "In"),  # evimin
-            (equ_ST, "cA", equCond or ContainsMorpheme(pastPart)),  # evimce
+            (equ_ST, "cA", equCond.or_(ContainsMorpheme(pastPart))),  # evimce
             (acc_ST, "I")  # evimi
-
         ])
 
         p2sg_S.add_all([
@@ -1164,7 +1148,7 @@ class TurkishMorphotactics:
             (abl_ST, "dAn"),  # evinden
             (ins_ST, "lA"),  # evinle
             (gen_ST, "In"),  # evinin
-            (equ_ST, "cA", equCond or ContainsMorpheme(pastPart)),  # evince
+            (equ_ST, "cA", equCond.or_(ContainsMorpheme(pastPart))),  # evince
             (acc_ST, "I")  # evini
 
         ])
@@ -1176,7 +1160,7 @@ class TurkishMorphotactics:
             (abl_ST, "ndAn"),  # evinden
             (ins_ST, "ylA"),  # eviyle
             (gen_ST, "nIn"),  # evinin
-            (equ_ST, "ncA", equCond or ContainsMorpheme(pastPart)),  # evince
+            (equ_ST, "ncA", equCond.or_(ContainsMorpheme(pastPart))),  # evince
             (acc_ST, "nI")  # evini
         ])
 
@@ -1188,7 +1172,7 @@ class TurkishMorphotactics:
             (abl_ST, "dAn"),  # evimizden
             (ins_ST, "lA"),  # evimizden
             (gen_ST, "In"),  # evimizin
-            (equ_ST, "cA", equCond or ContainsMorpheme(pastPart)),  # evimizce
+            (equ_ST, "cA", equCond.or_(ContainsMorpheme(pastPart))),  # evimizce
             (acc_ST, "I")  # evimizi
         ])
         p2pl_S.add_all([
@@ -1198,7 +1182,7 @@ class TurkishMorphotactics:
             (abl_ST, "dAn"),  # evinizden
             (ins_ST, "lA"),  # evinizle
             (gen_ST, "In"),  # evinizin
-            (equ_ST, "cA", equCond or ContainsMorpheme(pastPart)),  # evinizce
+            (equ_ST, "cA", equCond.or_(ContainsMorpheme(pastPart))),  # evinizce
             (acc_ST, "I")  # evinizi
 
         ])
@@ -1220,27 +1204,27 @@ class TurkishMorphotactics:
         # There are two almost identical suffix transitions with templates ">cI~k" and ">cI!ğ"
         # This was necessary for some simplification during analysis. This way there will be only one
         # surface form generated for each transition.
-        nom_ST.add(dim_S, ">cI~k", HAS_NO_SURFACE.and_not(abbreviation))
-        nom_ST.add(dim_S, ">cI!ğ", HAS_NO_SURFACE.and_not(abbreviation))
+        nom_ST.add(dim_S, ">cI~k", HasAnySuffixSurface().not_().and_not(abbreviation))
+        nom_ST.add(dim_S, ">cI!ğ", HasAnySuffixSurface().not_().and_not(abbreviation))
 
         # ev-ε-ε-ε-ceğiz (evceğiz)
-        nom_ST.add(dim_S, "cAğIz", HAS_NO_SURFACE.and_not(abbreviation))
+        nom_ST.add(dim_S, "cAğIz", HasAnySuffixSurface().not_().and_not(abbreviation))
 
         # connect dim to the noun root.
         dim_S.add_empty(noun_S)
 
         emptyAdjNounSeq = ContainsMorphemeSequence(adj, zero, noun, a3sg, pnon, nom)
 
-        nom_ST.add(ness_S, "lI~k", CURRENT_GROUP_EMPTY.and_not(containsNess).and_not(emptyAdjNounSeq)
+        nom_ST.add(ness_S, "lI~k", NoSurfaceAfterDerivation().and_not(containsNess).and_not(emptyAdjNounSeq)
                    .and_not(abbreviation))
         nom_ST.add(ness_S, "lI!ğ",
-                   CURRENT_GROUP_EMPTY.and_not(containsNess).and_not(emptyAdjNounSeq).and_not(abbreviation))
+                   NoSurfaceAfterDerivation().and_not(containsNess).and_not(emptyAdjNounSeq).and_not(abbreviation))
 
         # connect `ness` to the noun root.
         ness_S.add_empty(noun_S)
 
         nom_ST.add(agt_S, ">cI",
-                   CURRENT_GROUP_EMPTY.and_not(ContainsMorpheme(adj, agt)))
+                   NoSurfaceAfterDerivation().and_not(ContainsMorpheme(adj, agt)))
 
         # connect `ness` to the noun root.
         agt_S.add_empty(noun_S)
@@ -1249,7 +1233,8 @@ class TurkishMorphotactics:
         # such as, adj->zero->noun->ε-ε-ε->zero->Verb is not acceptable because there is already a
         # adj->zero->Verb path.
 
-        noun2VerbZeroDerivationCondition = HAS_TAIL.and_not(CURRENT_GROUP_EMPTY.and_(LastDerivationIs(adjZeroDeriv_S)))
+        noun2VerbZeroDerivationCondition = HasTail().and_not(
+            NoSurfaceAfterDerivation().and_(LastDerivationIs(adjZeroDeriv_S)))
         nom_ST.add_empty(nounZeroDeriv_S, noun2VerbZeroDerivationCondition)
 
         # elma-ya-yım elma-ya-ydı
@@ -1304,7 +1289,7 @@ class TurkishMorphotactics:
         # for covering dünkü, anki, yarınki etc. Unlike Oflazer, We also allow dündeki etc.
         # TODO: Use a more general grouping, not using Secondary Pos
 
-        time = CURRENT_GROUP_EMPTY.and_(SecondaryPosIs(SecondaryPos.Time))
+        time = NoSurfaceAfterDerivation().and_(SecondaryPosIs(SecondaryPos.Time))
 
         dun = self.lexicon.get_item_by_id("dün_Noun_Time")
         gun = self.lexicon.get_item_by_id("gün_Noun_Time")
@@ -1314,9 +1299,9 @@ class TurkishMorphotactics:
         ote = self.lexicon.get_item_by_id("öte_Noun")
         beri = self.lexicon.get_item_by_id("beri_Noun")
 
-        time2 = root_is_any(dun, gun, bugun)
+        time2 = DictionaryItemIsAny(dun, gun, bugun)
         nom_ST.add(rel_S, "ki", time.and_not(time2))
-        nom_ST.add(rel_S, "ki", root_is_any(ileri, geri, ote, beri))
+        nom_ST.add(rel_S, "ki", DictionaryItemIsAny(ileri, geri, ote, beri))
         nom_ST.add(rel_S, "kü", time2.and_(time))
 
         # After Genitive suffix, Rel suffix makes a Pronoun derivation.
@@ -1383,8 +1368,8 @@ class TurkishMorphotactics:
     def connect_adjective_states(self):
         # zero morpheme derivation. Words like "yeşil-i" requires Adj to Noun conversion.
         # Since noun suffixes are not derivational a "Zero" morpheme is used for this.
-        # Transition has a HAS_TAIL condition because Adj->Zero->Noun+A3sg+Pnon+Nom) is not allowed.
-        adjectiveRoot_ST.add_empty(adjZeroDeriv_S, HAS_TAIL)
+        # Transition has a HasTail() condition because Adj->Zero->Noun+A3sg+Pnon+Nom) is not allowed.
+        adjectiveRoot_ST.add_empty(adjZeroDeriv_S, HasTail())
 
         adjZeroDeriv_S.add_empty(noun_S)
 
@@ -1430,7 +1415,7 @@ class TurkishMorphotactics:
     def connect_numeral_states(self):
         numeralRoot_ST.add(ness_S, "lI~k")
         numeralRoot_ST.add(ness_S, "lI!ğ")
-        numeralRoot_ST.add_empty(numZeroDeriv_S, HAS_TAIL)
+        numeralRoot_ST.add_empty(numZeroDeriv_S, HasTail())
         numZeroDeriv_S.add_empty(noun_S)
         numZeroDeriv_S.add_empty(nVerb_S)
 
@@ -1459,9 +1444,9 @@ class TurkishMorphotactics:
         # noun->Verb Zero morpheme derivation. because it cannot have most Verb suffixes.
         # So we connect it to a separate root state "nVerbDegil" instead of Verb
         degilRoot = self.lexicon.get_item_by_id("değil_Verb")
-        nVerbDegil_S.add_empty(nNeg_S, root_is(degilRoot))
+        nVerbDegil_S.add_empty(nNeg_S, DictionaryItemIs(degilRoot))
         # copy transitions from nVerb_S
-        nNeg_S.copyOutgoingTransitionsFrom(nVerb_S)
+        nNeg_S.copy_outgoing_transitions_from(nVerb_S)
 
         noFamily = not_have(RootAttribute.FamilyMember)
         # for preventing elmamım, elmamdım
@@ -1489,7 +1474,7 @@ class TurkishMorphotactics:
         nPresent_S.add_empty(nA3sg_S)
 
         # we allow `değil` to end with terminal A3sg from Present tense.
-        nPresent_S.add_empty(nA3sg_ST, root_is(degilRoot))
+        nPresent_S.add_empty(nA3sg_ST, DictionaryItemIs(degilRoot))
 
         # elma-lar, elma-da-lar as Verb.
         # TODO: consider disallowing this for "elmalar" case.
@@ -1575,20 +1560,20 @@ class TurkishMorphotactics:
         falan = self.lexicon.get_item_by_id("falan_Pron_Pers")
         falanca = self.lexicon.get_item_by_id("falanca_Pron_Pers")
 
-        pronPers_S.add_empty(pA1sg_S, root_is(ben))
-        pronPers_S.add_empty(pA2sg_S, root_is(sen))
-        pronPers_S.add_empty(pA3sg_S, root_is_any(o, falan, falanca))
-        pronPers_S.add(pA3pl_S, "nlAr", root_is(o))  # Oflazer does not have "onlar" as Pronoun root.
+        pronPers_S.add_empty(pA1sg_S, DictionaryItemIs(ben))
+        pronPers_S.add_empty(pA2sg_S, DictionaryItemIs(sen))
+        pronPers_S.add_empty(pA3sg_S, DictionaryItemIsAny(o, falan, falanca))
+        pronPers_S.add(pA3pl_S, "nlAr", DictionaryItemIs(o))  # Oflazer does not have "onlar" as Pronoun root.
 
-        pronPers_S.add(pA3pl_S, "lAr", root_is_any(falan, falanca))
-        pronPers_S.add_empty(pA1pl_S, root_is(biz))
-        pronPers_S.add(pA1pl_S, "lAr", root_is(biz))
-        pronPers_S.add_empty(pA2pl_S, root_is(siz))
-        pronPers_S.add(pA2pl_S, "lAr", root_is(siz))
+        pronPers_S.add(pA3pl_S, "lAr", DictionaryItemIsAny(falan, falanca))
+        pronPers_S.add_empty(pA1pl_S, DictionaryItemIs(biz))
+        pronPers_S.add(pA1pl_S, "lAr", DictionaryItemIs(biz))
+        pronPers_S.add_empty(pA2pl_S, DictionaryItemIs(siz))
+        pronPers_S.add(pA2pl_S, "lAr", DictionaryItemIs(siz))
 
         # --- modified `ben-sen` special state and transitions
-        pronPers_Mod_S.add_empty(pA1sgMod_S, root_is(ben))
-        pronPers_Mod_S.add_empty(pA2sgMod_S, root_is(sen))
+        pronPers_Mod_S.add_empty(pA1sgMod_S, DictionaryItemIs(ben))
+        pronPers_Mod_S.add_empty(pA2sgMod_S, DictionaryItemIs(sen))
         pA1sgMod_S.add_empty(pPnonMod_S)
         pA2sgMod_S.add_empty(pPnonMod_S)
         pPnonMod_S.add(pDat_ST, "A")
@@ -1653,33 +1638,35 @@ class TurkishMorphotactics:
         # we have separate A3pl and A3sg states for Quantitive Pronouns.
         # herkes and hep cannot be singular.
         pronQuant_S.add_empty(pQuantA3sg_S,
-                              root_is_none(herkes, umum, hepsi, cumlesi, hep, tumu, birkaci, topu))
+                              DictionaryItemIsAny(herkes, umum, hepsi, cumlesi, hep, tumu, birkaci, topu).not_())
 
         pronQuant_S.add(pQuantA3pl_S, "lAr",
-                        root_is_none(hep, hepsi, birkaci, umum, cumlesi, cogu, bircogu, herbiri, tumu, hicbiri, topu,
-                                     oburu))
+                        DictionaryItemIsAny(hep, hepsi, birkaci, umum, cumlesi,
+                                            cogu, bircogu, herbiri, tumu, hicbiri,
+                                            topu, oburu).not_())
 
         # bazılarınız -> A1pl+P1pl
-        pronQuant_S.add(pQuantA1pl_S, "lAr", root_is_any(bazi))
-        pronQuant_S.add(pQuantA2pl_S, "lAr", root_is_any(bazi))
+        pronQuant_S.add(pQuantA1pl_S, "lAr", DictionaryItemIsAny(bazi))
+        pronQuant_S.add(pQuantA2pl_S, "lAr", DictionaryItemIsAny(bazi))
 
         # Herkes is implicitly plural.
         pronQuant_S.add_empty(pQuantA3pl_S,
-                              root_is_any(herkes, umum, birkaci, hepsi, cumlesi, cogu, bircogu, tumu, topu))
+                              DictionaryItemIsAny(herkes, umum, birkaci, hepsi, cumlesi, cogu, bircogu, tumu, topu))
 
         # connect "kimse" to Noun-A3sg and Noun-A3pl. It behaves like a noun.
-        pronQuant_S.add_empty(a3sg_S, root_is(kimse))
-        pronQuant_S.add(a3pl_S, "lAr", root_is_any(kimse))
+        pronQuant_S.add_empty(a3sg_S, DictionaryItemIs(kimse))
+        pronQuant_S.add(a3pl_S, "lAr", DictionaryItemIsAny(kimse))
 
         # for `birbiri-miz` `hep-imiz`
         pronQuant_S.add_empty(pQuantA1pl_S,
-                              root_is_any(biri, bazi, birbiri, birkaci, herbiri, hep, kimi,
-                                          cogu, bircogu, tumu, topu, hicbiri))
+                              DictionaryItemIsAny(biri, bazi, birbiri, birkaci, herbiri, hep, kimi,
+                                                  cogu, bircogu, tumu, topu, hicbiri))
 
         # for `birbiri-niz` and `hep-iniz`
         pronQuant_S.add_empty(pQuantA2pl_S,
-                              root_is_any(biri, bazi, birbiri, birkaci, herbiri, hep, kimi, cogu, bircogu, tumu, topu,
-                                          hicbiri))
+                              DictionaryItemIsAny(biri, bazi, birbiri, birkaci, herbiri, hep, kimi, cogu, bircogu, tumu,
+                                                  topu,
+                                                  hicbiri))
 
         # this is used for birbir-ler-i, çok-lar-ı, birçok-lar-ı separate root and A3pl states are
         # used for this.
@@ -1688,17 +1675,17 @@ class TurkishMorphotactics:
 
         # both `biri-ne` and `birisi-ne` or `birbirine` and `birbirisine` are accepted.
         pQuantA3sg_S.add_empty(pP3sg_S,
-                               root_is_any(biri, birbiri, kimi, herbiri, hicbiri, oburu, oburku, beriki).and_(
+                               DictionaryItemIsAny(biri, birbiri, kimi, herbiri, hicbiri, oburu, oburku, beriki).and_(
                                    not_have(PhoneticAttribute.ModifiedPronoun)))
 
         pQuantA3sg_S.add(pP3sg_S, "sI",
-                         root_is_any(biri, bazi, kimi, birbiri, herbiri, hicbiri, oburku).and_(
+                         DictionaryItemIsAny(biri, bazi, kimi, birbiri, herbiri, hicbiri, oburku).and_(
                              not_have(PhoneticAttribute.ModifiedPronoun)))
 
         # there is no connection from pQuantA3pl to Pnon for preventing `biriler` (except herkes)
-        pQuantA3pl_S.add(pP3pl_S, "I", root_is_any(biri, bazi, birbiri, kimi, oburku, beriki))
-        pQuantA3pl_S.add_empty(pP3pl_S, root_is_any(hepsi, birkaci, cumlesi, cogu, tumu, topu, bircogu))
-        pQuantA3pl_S.add_empty(pPnon_S, root_is_any(herkes, umum, oburku, beriki))
+        pQuantA3pl_S.add(pP3pl_S, "I", DictionaryItemIsAny(biri, bazi, birbiri, kimi, oburku, beriki))
+        pQuantA3pl_S.add_empty(pP3pl_S, DictionaryItemIsAny(hepsi, birkaci, cumlesi, cogu, tumu, topu, bircogu))
+        pQuantA3pl_S.add_empty(pPnon_S, DictionaryItemIsAny(herkes, umum, oburku, beriki))
 
         pQuantA1pl_S.add(pP1pl_S, "ImIz")
         pQuantA2pl_S.add(pP2pl_S, "InIz")
@@ -1714,12 +1701,12 @@ class TurkishMorphotactics:
 
         pQuesA3sg_S.add_all([(pPnon_S, ""),
                              (pP3sg_S, "+sI"),
-                             (pP1sg_S, "Im", root_is_not(ne)),
-                             (pP1sg_S, "yIm", root_is(ne)),
-                             (pP2sg_S, "In", root_is_not(ne)),
-                             (pP2sg_S, "yIn", root_is(ne)),
-                             (pP1pl_S, "ImIz", root_is_not(ne)),
-                             (pP1pl_S, "yImIz", root_is(ne))])
+                             (pP1sg_S, "Im", DictionaryItemIs(ne).not_()),
+                             (pP1sg_S, "yIm", DictionaryItemIs(ne)),
+                             (pP2sg_S, "In", DictionaryItemIs(ne).not_()),
+                             (pP2sg_S, "yIn", DictionaryItemIs(ne)),
+                             (pP1pl_S, "ImIz", DictionaryItemIs(ne).not_()),
+                             (pP1pl_S, "yImIz", DictionaryItemIs(ne))])
 
         pQuesA3pl_S.add_all([
             (pPnon_S, ''),
@@ -1749,13 +1736,13 @@ class TurkishMorphotactics:
         # ------------------------
         # Case connections for all
 
-        nGroup = root_is_none(ne, nere, falan, falanca, hep, herkes)
+        nGroup = DictionaryItemIsAny(ne, nere, falan, falanca, hep, herkes).not_()
 
-        yGroup = root_is_any(ne, nere, falan, falanca, hep, herkes)
+        yGroup = DictionaryItemIsAny(ne, nere, falan, falanca, hep, herkes)
 
         pPnon_S.add_all([(pNom_ST, ''),
                          # not allowing `ben-e` and `sen-e`. `ban-a` and `san-a` are using different states
-                         (pDat_ST, "+nA", root_is_none(ben, sen, ne, nere, falan, falanca, herkes)),
+                         (pDat_ST, "+nA", DictionaryItemIsAny(ben, sen, ne, nere, falan, falanca, herkes).not_()),
                          (pDat_ST, "+yA", yGroup),
                          (pAcc_ST, "+nI", nGroup),
                          (pAcc_ST, "+yI", yGroup),
@@ -1763,19 +1750,19 @@ class TurkishMorphotactics:
                          (pLoc_ST, ">dA", yGroup),
                          (pAbl_ST, "+ndAn", nGroup),
                          (pAbl_ST, ">dAn", yGroup),
-                         (pGen_ST, "+nIn", nGroup.and_(root_is_none(biz, ben, sen))),
-                         (pGen_ST, "im", root_is_any(ben, biz)),  # benim, senin, bizim are genitive.
-                         (pGen_ST, "in", root_is(sen)),
-                         (pGen_ST, "+yIn", yGroup.and_(root_is_none(biz))),
+                         (pGen_ST, "+nIn", nGroup.and_(DictionaryItemIsAny(biz, ben, sen).not_())),
+                         (pGen_ST, "im", DictionaryItemIsAny(ben, biz)),  # benim, senin, bizim are genitive.
+                         (pGen_ST, "in", DictionaryItemIs(sen)),
+                         (pGen_ST, "+yIn", yGroup.and_(DictionaryItemIsAny(biz).not_())),
                          (pEqu_ST, ">cA", yGroup),
                          (pEqu_ST, ">cA", nGroup),
                          (pIns_ST, "+ylA", yGroup),
                          (pIns_ST, "+nlA", nGroup),
-                         (pIns_ST, "+nInlA", nGroup.and_(root_is_any(bu, su, o, sen))),
-                         (pIns_ST, "inle", root_is(siz)),
-                         (pIns_ST, "imle", root_is_any(biz, ben))])
+                         (pIns_ST, "+nInlA", nGroup.and_(DictionaryItemIsAny(bu, su, o, sen))),
+                         (pIns_ST, "inle", DictionaryItemIs(siz)),
+                         (pIns_ST, "imle", DictionaryItemIsAny(biz, ben))])
 
-        conditionpP1sg_S = root_is_any(kim, ben, ne, nere, kendi)
+        conditionpP1sg_S = DictionaryItemIsAny(kim, ben, ne, nere, kendi)
 
         pP1sg_S.add_all([
             (pNom_ST, ""),
@@ -1783,28 +1770,28 @@ class TurkishMorphotactics:
             (pAcc_ST, "+nI", nGroup),
             (pDat_ST, "+yA", yGroup),
             (pAcc_ST, "+yI", yGroup),
-            (pLoc_ST, "+ndA", root_is_any(kendi)),
-            (pAbl_ST, "+ndAn", root_is_any(kendi)),
-            (pEqu_ST, "+ncA", root_is_any(kendi)),
+            (pLoc_ST, "+ndA", DictionaryItemIsAny(kendi)),
+            (pAbl_ST, "+ndAn", DictionaryItemIsAny(kendi)),
+            (pEqu_ST, "+ncA", DictionaryItemIsAny(kendi)),
             (pIns_ST, "+nlA", conditionpP1sg_S),
             (pGen_ST, "+nIn", conditionpP1sg_S)
         ])
 
-        conditionP2sg = root_is_any(kim, sen, ne, nere, kendi)
+        conditionP2sg = DictionaryItemIsAny(kim, sen, ne, nere, kendi)
         pP2sg_S.add_all([
             (pNom_ST, ""),
             (pDat_ST, "+nA", nGroup),
             (pAcc_ST, "+nI", nGroup),
             (pDat_ST, "+yA", yGroup),
             (pAcc_ST, "+yI", yGroup),
-            (pLoc_ST, "+ndA", root_is_any(kendi)),
-            (pAbl_ST, "+ndAn", root_is_any(kendi)),
-            (pEqu_ST, "+ncA", root_is_any(kendi)),
+            (pLoc_ST, "+ndA", DictionaryItemIsAny(kendi)),
+            (pAbl_ST, "+ndAn", DictionaryItemIsAny(kendi)),
+            (pEqu_ST, "+ncA", DictionaryItemIsAny(kendi)),
             (pIns_ST, "+nlA", conditionP2sg),
             (pGen_ST, "+nIn", conditionP2sg)
         ])
 
-        p3sgCond = root_is_any(kendi, kim, ne, nere, o, bazi, biri, birbiri, herbiri, hep, kimi, hicbiri)
+        p3sgCond = DictionaryItemIsAny(kendi, kim, ne, nere, o, bazi, biri, birbiri, herbiri, hep, kimi, hicbiri)
 
         pP3sg_S.add_all([
             (pNom_ST, ""),
@@ -1819,7 +1806,7 @@ class TurkishMorphotactics:
             (pIns_ST, "+ylA", p3sgCond)
         ])
 
-        hepCnd = root_is_any(
+        hepCnd = DictionaryItemIsAny(
             kendi, kim, ne, nere, biz, siz, biri, birbiri, birkaci, herbiri, hep, kimi, cogu, bircogu,
             tumu, topu, bazi, hicbiri)
         pP1pl_S.add_all([
@@ -1848,7 +1835,7 @@ class TurkishMorphotactics:
             (pIns_ST, "+nlA", hepCnd)
         ])
 
-        hepsiCnd = root_is_any(
+        hepsiCnd = DictionaryItemIsAny(
             kendi, kim, ne, nere, o, bazi, biri, herkes, umum, birkaci, hepsi, cumlesi, cogu,
             bircogu, birbiri, tumu, kimi, topu)
 
@@ -1860,18 +1847,18 @@ class TurkishMorphotactics:
             (pAcc_ST, "+yI", yGroup),
             (pLoc_ST, "+ndA", hepsiCnd),
             (pAbl_ST, "+ndAn", hepsiCnd),
-            (pGen_ST, "+nIn", hepsiCnd or root_is_any(sen, siz)),
+            (pGen_ST, "+nIn", hepsiCnd.or_(DictionaryItemIsAny(sen, siz))),
             (pEqu_ST, "+ncA", hepsiCnd),
             (pIns_ST, "+ylA", hepsiCnd)
         ])
 
-        pNom_ST.add(with_S, "+nlI", root_is_any(bu, su, o_demons, ben, sen, o, biz, siz))
-        pNom_ST.add(with_S, "lI", root_is_any(nere))
-        pNom_ST.add(with_S, "+ylI", root_is_any(ne))
+        pNom_ST.add(with_S, "+nlI", DictionaryItemIsAny(bu, su, o_demons, ben, sen, o, biz, siz))
+        pNom_ST.add(with_S, "lI", DictionaryItemIsAny(nere))
+        pNom_ST.add(with_S, "+ylI", DictionaryItemIsAny(ne))
         pNom_ST.add(without_S, "+nsIz",
-                    root_is_any(nere, bu, su, o_demons, ben, sen, o, biz, siz))
-        pNom_ST.add(without_S, "+ysIz", root_is_any(ne))
-        pGen_ST.add(rel_S, "ki", root_is_any(nere, bu, su, o_demons, ne, sen, o, biz, siz))
+                    DictionaryItemIsAny(nere, bu, su, o_demons, ben, sen, o, biz, siz))
+        pNom_ST.add(without_S, "+ysIz", DictionaryItemIsAny(ne))
+        pGen_ST.add(rel_S, "ki", DictionaryItemIsAny(nere, bu, su, o_demons, ne, sen, o, biz, siz))
 
         notRelRepetition = HasTailSequence(rel, adj, zero, noun, a3sg, pnon, loc).not_()
         pLoc_ST.add(rel_S, "ki", notRelRepetition)
@@ -1880,12 +1867,12 @@ class TurkishMorphotactics:
 
         # ------------- Derivation connections ---------
 
-        pNom_ST.add_empty(pronZeroDeriv_S, HAS_TAIL)
-        pDat_ST.add_empty(pronZeroDeriv_S, HAS_TAIL)
-        pLoc_ST.add_empty(pronZeroDeriv_S, HAS_TAIL)
-        pAbl_ST.add_empty(pronZeroDeriv_S, HAS_TAIL)
-        pGen_ST.add_empty(pronZeroDeriv_S, HAS_TAIL)
-        pIns_ST.add_empty(pronZeroDeriv_S, HAS_TAIL)
+        pNom_ST.add_empty(pronZeroDeriv_S, HasTail())
+        pDat_ST.add_empty(pronZeroDeriv_S, HasTail())
+        pLoc_ST.add_empty(pronZeroDeriv_S, HasTail())
+        pAbl_ST.add_empty(pronZeroDeriv_S, HasTail())
+        pGen_ST.add_empty(pronZeroDeriv_S, HasTail())
+        pIns_ST.add_empty(pronZeroDeriv_S, HasTail())
 
         pronZeroDeriv_S.add_empty(pvVerbRoot_S)
 
@@ -1974,17 +1961,17 @@ class TurkishMorphotactics:
         gibiGen = self.lexicon.get_item_by_id("gibi_Postp_PCGen")
         gibiNom = self.lexicon.get_item_by_id("gibi_Postp_PCNom")
         sonraAbl = self.lexicon.get_item_by_id("sonra_Postp_PCAbl")
-        postpZero_S.add_empty(po2nRoot_S, root_is_any(gibiGen, gibiNom, sonraAbl))
+        postpZero_S.add_empty(po2nRoot_S, DictionaryItemIsAny(gibiGen, gibiNom, sonraAbl))
 
         po2nRoot_S.add_empty(po2nA3sg_S)
         po2nRoot_S.add(po2nA3pl_S, "lAr")
 
         # gibisi, gibim-e, gibi-e, gibi-mize
         po2nA3sg_S.add(po2nP3sg_S, "+sI")
-        po2nA3sg_S.add(po2nP1sg_S, "m", root_is_any(gibiGen, gibiNom))
-        po2nA3sg_S.add(po2nP2sg_S, "n", root_is_any(gibiGen, gibiNom))
-        po2nA3sg_S.add(po2nP1pl_S, "miz", root_is_any(gibiGen, gibiNom))
-        po2nA3sg_S.add(po2nP2pl_S, "niz", root_is_any(gibiGen, gibiNom))
+        po2nA3sg_S.add(po2nP1sg_S, "m", DictionaryItemIsAny(gibiGen, gibiNom))
+        po2nA3sg_S.add(po2nP2sg_S, "n", DictionaryItemIsAny(gibiGen, gibiNom))
+        po2nA3sg_S.add(po2nP1pl_S, "miz", DictionaryItemIsAny(gibiGen, gibiNom))
+        po2nA3sg_S.add(po2nP2pl_S, "niz", DictionaryItemIsAny(gibiGen, gibiNom))
 
         # gibileri
         po2nA3pl_S.add(po2nP3sg_S, "+sI")
@@ -2037,11 +2024,12 @@ class TurkishMorphotactics:
         # 3- "Ir" form appears after some specific verbs but currently we treat them as separate verb.
         # such as "pişmek - pişirmek". Oflazer parses them as causative.
 
-        verbRoot_S.add(vCausT_S, "t", has(RootAttribute.Causative_t) or LastDerivationIs(vCausTır_S).and_not(
-            LastDerivationIsAny(vCausT_S, vPass_S, vAble_S)))
+        verbRoot_S.add(vCausT_S, "t",
+                       HasRootAttribute(RootAttribute.Causative_t).or_(LastDerivationIs(vCausTır_S)).and_not(
+                           LastDerivationIsAny(vCausT_S, vPass_S, vAble_S)))
 
         verbRoot_S.add(vCausTır_S, ">dIr",
-                       has(PhoneticAttribute.LastLetterConsonant).and_not(
+                       HasPhoneticAttribute(PhoneticAttribute.LastLetterConsonant).and_not(
                            LastDerivationIsAny(vCausTır_S, vPass_S, vAble_S)))
 
         vCausT_S.add_empty(verbRoot_S)
@@ -2089,9 +2077,9 @@ class TurkishMorphotactics:
         # However there are exceptions to it as well. So dictionary items are marked as Aorist_I and
         # Aorist_A.
         verbRoot_S.add(vAor_S, "Ir",
-                       has(RootAttribute.Aorist_I) or HAS_SURFACE)
+                       HasRootAttribute(RootAttribute.Aorist_I).or_(HasAnySuffixSurface()))
         verbRoot_S.add(vAor_S, "Ar",
-                       has(RootAttribute.Aorist_A).and_(HAS_NO_SURFACE))
+                       HasRootAttribute(RootAttribute.Aorist_A).and_(HasAnySuffixSurface().not_()))
         vAor_S.add_all([
             (vA1sg_ST, "Im"),
             (vA2sg_ST, "sIn"),
@@ -2107,7 +2095,7 @@ class TurkishMorphotactics:
         ])
 
         # Negative
-        verbRoot_S.add(vNeg_S, "mA", previous_morpheme_is_not(able))
+        verbRoot_S.add(vNeg_S, "mA", PreviousMorphemeIs(able).not_())
 
         vNeg_S.add_all([(vImp_S, ''),
                         (vPast_S, "dI"),
@@ -2168,7 +2156,7 @@ class TurkishMorphotactics:
 
         # Positive Ability.
         # This makes a Verb-Verb derivation.
-        verbRoot_S.add(vAble_S, "+yAbil", last_derivation_is(vAble_S).not_())
+        verbRoot_S.add(vAble_S, "+yAbil", LastDerivationIs(vAble_S).not_())
 
         vAble_S.add_empty(verbRoot_S)
 
@@ -2182,9 +2170,9 @@ class TurkishMorphotactics:
         vNeg_S.add(vAble_S, "yAbil")
 
         # Unable.
-        verbRoot_S.add(vUnable_S, "+yAmA", previous_morpheme_is_not(able))
+        verbRoot_S.add(vUnable_S, "+yAmA", PreviousMorphemeIs(able).not_())
         # careful here. We copy all outgoing transitions to "unable"
-        vUnable_S.copyOutgoingTransitionsFrom(vNeg_S)
+        vUnable_S.copy_outgoing_transitions_from(vNeg_S)
         verbRoot_S.add(vUnableProg1_S, "+yAm")
         vUnableProg1_S.add(vProgYor_S, "Iyor")
 
@@ -2223,7 +2211,7 @@ class TurkishMorphotactics:
         # FutPart "oku-yacağ-ım kitap"
         verbRoot_S.add(vFutPart_S, "+yAcA~k")
         verbRoot_S.add(vFutPart_S, "+yAcA!ğ")
-        vFutPart_S.add_empty(noun_S, HAS_TAIL)
+        vFutPart_S.add_empty(noun_S, HasTail())
         vFutPart_S.add_empty(adjAfterVerb_S)
 
         # FutPart "oku-yacağ-ım kitap"
@@ -2232,19 +2220,19 @@ class TurkishMorphotactics:
 
         # AorPart "okunabilir-lik"
         verbRoot_S.add(vAorPart_S, "Ir",
-                       has(RootAttribute.Aorist_I).or_(HAS_SURFACE))
+                       HasRootAttribute(RootAttribute.Aorist_I).or_(HasAnySuffixSurface()))
         verbRoot_S.add(vAorPart_S, "Ar",
-                       has(RootAttribute.Aorist_A).and_(HAS_NO_SURFACE))
+                       HasRootAttribute(RootAttribute.Aorist_A).and_(HasAnySuffixSurface().not_()))
         vAorPart_S.add_empty(adjAfterVerb_ST)
 
         # PresPart
         verbRoot_S.add(vPresPart_S, "+yAn")
-        vPresPart_S.add_empty(noun_S, HAS_TAIL)
+        vPresPart_S.add_empty(noun_S, HasTail())
         vPresPart_S.add_empty(adjAfterVerb_ST)  # connect to terminal Adj
 
         # FeelLike
         verbRoot_S.add(vFeelLike_S, "+yAsI")
-        vFeelLike_S.add_empty(noun_S, HAS_TAIL)
+        vFeelLike_S.add_empty(noun_S, HasTail())
         vFeelLike_S.add_empty(adjAfterVerb_ST)  # connect to terminal Adj
 
         # NotState
@@ -2272,10 +2260,10 @@ class TurkishMorphotactics:
         # 3- If Verb ends with other consonants: "nIl"
         # When loading dictionary, first and second case items are marked with Passive_In
 
-        verbRoot_S.add(vPass_S, "In", has(RootAttribute.Passive_In).and_not(
+        verbRoot_S.add(vPass_S, "In", HasRootAttribute(RootAttribute.Passive_In).and_not(
             ContainsMorpheme(
                 pass_)))
-        verbRoot_S.add(vPass_S, "InIl", has(RootAttribute.Passive_In)
+        verbRoot_S.add(vPass_S, "InIl", HasRootAttribute(RootAttribute.Passive_In)
                        .and_not(ContainsMorpheme(pass_)))
         verbRoot_S.add(vPass_S, "+nIl",
                        PreviousStateIsAny(vCausT_S, vCausTır_S).or_(not_have(RootAttribute.Passive_In)).and_not(
@@ -2670,17 +2658,17 @@ class TurkishMorphotactics:
         imekA3pl_ST.add(imekCop_ST, "dir", rejectNoCopula)
 
     def handle_post_processing_connections(self):
-
         # Passive has an exception for some verbs like `kavurmak` or `savurmak`.
         # add passive state connection to modified root `kavr` etc.
         verbLastVowelDropModRoot_S.add(vPass_S, "Il")
         # for not allowing `kavur-ul` add all verb connections to
         # unmodified `kavur` root and remove only the passive.
-        verbLastVowelDropUnmodRoot_S.copyOutgoingTransitionsFrom(verbRoot_S)
-        verbLastVowelDropUnmodRoot_S.removeTransitionsTo(pass_)
+        verbLastVowelDropUnmodRoot_S.copy_outgoing_transitions_from(verbRoot_S)
+        verbLastVowelDropUnmodRoot_S.remove_transitions_to(pass_)
 
-    def get_root_state(self, dict_item, attrs):
+    def get_root_state(self, dict_item, attrs=None):
         root = self.item_root_states.get(dict_item.id_)
+        attrs = attrs.copy() if attrs is not None else calculate_phonetic_attributes(dict_item.pronunciation)
         if root is not None:
             return root
         # Verbs like "aramak" drops their last vowel when  connected to "Iyor" Progressive suffix.
@@ -2770,12 +2758,11 @@ class MorphemeTransition:
 
 
 class StemTransition(MorphemeTransition):
-    def __init__(self, surface: str, dict_item: DictionaryItem, attrs: Set,
-                 to_: MorphemeState):
+    def __init__(self, dict_item: DictionaryItem, to_: MorphemeState, attrs: Set = None, surface: str = None):
         super().__init__(root_S, to_, None)
-        self.surface = surface
+        self.surface = surface if surface is not None else dict_item.root
         self.dict_item = dict_item
-        self.attrs = attrs
+        self.attrs = calculate_phonetic_attributes(dict_item.pronunciation) if attrs is None else attrs.copy()
 
     def __str__(self):
         return f"<(Dict: {self.dict_item}):{self.surface} → {self.to_}>"
@@ -2795,7 +2782,7 @@ class SuffixTransition(MorphemeTransition):
         super().__init__(from_, to_, condition)
         self.surface_template = "" if surface_template is None else surface_template
         self.condition = condition
-        self.from_template()
+        self.parse_conditions_from_template()
         self.token_list = list(SuffixTemplateTokenizer(self.surface_template))
 
     def __str__(self):
@@ -2814,7 +2801,7 @@ class SuffixTransition(MorphemeTransition):
 
     # adds vowel-consonant expectation related automatically.
     # TODO: consider moving this to morphotactics somehow.
-    def from_template(self):
+    def parse_conditions_from_template(self):
         if self.surface_template is None or len(self.surface_template) == 0:
             return
         lower = tr.lower(self.surface_template)
@@ -3023,7 +3010,10 @@ class SearchPath:
     def __repr__(self):
         return f"SearchPath({self.dict_item.id_}) (-{self.tail})({self.transitions})"
 
-    def copy(self, surface_node: SurfaceTransition, phonetic_attributes: Set):
+    def copy(self, surface_node: SurfaceTransition, phonetic_attributes: Set = None):
+        phonetic_attributes = calculate_phonetic_attributes(surface_node.surface,
+                                                            self.phonetic_attributes) if phonetic_attributes is None \
+            else phonetic_attributes
         is_terminal = surface_node.state.terminal
         hist = self.transitions[:]
         hist.append(surface_node)
@@ -3034,7 +3024,7 @@ class SearchPath:
             hist,
             phonetic_attributes.copy(),
             is_terminal)
-        path.contains_suffix_with_surface = self.contains_suffix_with_surface or len(surface_node.surface) == 0
+        path.contains_suffix_with_surface = self.contains_suffix_with_surface or len(surface_node.surface) > 0
         path.contains_derivation = self.contains_derivation or surface_node.state.derivative
         return path
 

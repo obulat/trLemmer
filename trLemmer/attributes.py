@@ -332,7 +332,7 @@ def morphemic_attributes(data, word: str, pos_data) -> Set:
     return attrs
 
 
-def infer_morphemic_attributes(word:str, pos_data, attrs: Set) -> Set:
+def infer_morphemic_attributes(word: str, pos_data, attrs: Set) -> Set:
     result = attrs
     last = word[-1]
     last_char_is_vowel = tr.is_vowel(last)
