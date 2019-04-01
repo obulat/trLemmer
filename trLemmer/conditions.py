@@ -362,7 +362,7 @@ class CurrentGroupContainsAny(Condition):
 class PreviousGroupContains(Condition):
     """ Checks if any of the "MorphemeState" in "states" exist in previous Inflectional Group.
     # If previous group starts after a derivation, derivation MorphemeState is also checked.
-    # TODO: this may have a bug. Add test"""
+    """
 
     def __init__(self, *states):
         self.states = states
@@ -381,7 +381,7 @@ class PreviousGroupContains(Condition):
                 return True
             if sf.state.derivative:
                 return False
-            return False
+        return False
 
     def __repr__(self):
         return f"PreviousGroupContains({self.states})"

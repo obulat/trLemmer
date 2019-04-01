@@ -9,7 +9,7 @@ from trLemmer.attributes import RootAttribute, PhoneticAttribute, \
 from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, DictionaryItemIs, not_have, \
     HasPhoneticAttribute, DictionaryItemIsAny, NoSurfaceAfterDerivation, HasAnySuffixSurface, HasTail, \
     PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot, HasTailSequence, \
-    ContainsMorphemeSequence, LastDerivationIsAny
+    ContainsMorphemeSequence, LastDerivationIsAny, PreviousGroupContains, CurrentGroupContainsAny
 from trLemmer.lexicon import RootLexicon
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
     adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
@@ -299,12 +299,38 @@ def test_LastDerivationIsAny(beyazlastirici_paths):
     assert LastDerivationIsAny(vCausTır_S, vPass_S, vAble_S).accept(path)
     assert not LastDerivationIsAny(become_S).accept(path)
 
+
+def test_CurrentGroupContainsAny(beyazlastirici_paths):
+    path = beyazlastirici_paths[5]
+    # WHERE the last inflection group is ici:vAgt_S
+    print(path)
+    assert not CurrentGroupContainsAny(vCausTır_S).accept(path)
+    assert CurrentGroupContainsAny(vAgt_S).accept(path)
+    path = beyazlastirici_paths[-1]
+    # WHERE the last inflection group is ici:vAgt_S+noun_S+a3sg_S+pnon_S+nom_ST
+    print(path)
+    assert not CurrentGroupContainsAny(vCausTır_S).accept(path)
+    assert CurrentGroupContainsAny(vAgt_S).accept(path)
+
+
+def test_PreviousGroupContainsAny(beyazlastirici_paths):
+    path = beyazlastirici_paths[4]
+    # WHERE the previous infl group is: become_S + verbRoot_S
+    # the current inflection group is ici:vCausTir_S+verbRoot_S
+    assert not PreviousGroupContains(vCausTır_S).accept(path)
+    assert PreviousGroupContains(become_S).accept(path)
+    assert PreviousGroupContains(verbRoot_S).accept(path)
+    path = beyazlastirici_paths[-1]
+    # WHERE the previous inflection group is: vCausTir_S+verbRoot_S
+    # the current inflection group is ici:vAgt_S+noun_S+a3sg_S+pnon_S+nom_ST
+    assert PreviousGroupContains(vCausTır_S).accept(path)
+    assert not PreviousGroupContains(vAgt_S).accept(path)
+    assert not PreviousGroupContains(become_S).accept(path)
+
     # TODO: SecondaryPosIs
     # TODO: RootSurfaceIs
     # TODO: RootSurfaceIsAny
-    # TODO: LastDerivationIsAny
     # TODO: CurrentGroupContainsAny
-    # TODO: PreviousGroupContains
     # TODO: PreviousGroupContainsMorpheme
     # TODO: ContainsMorpheme
     # TODO: PreviousMorphemeIsAny
