@@ -9,11 +9,11 @@ from trLemmer.attributes import RootAttribute, PhoneticAttribute, \
 from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, DictionaryItemIs, not_have, \
     HasPhoneticAttribute, DictionaryItemIsAny, NoSurfaceAfterDerivation, HasAnySuffixSurface, HasTail, \
     PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot, HasTailSequence, \
-    ContainsMorphemeSequence
+    ContainsMorphemeSequence, LastDerivationIsAny
 from trLemmer.lexicon import RootLexicon
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
     adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
-    nom_ST, vAgt_S, a3sg_S, pnon_S, morphemes, agt, a3sg, noun, pnon, nom
+    nom_ST, vAgt_S, a3sg_S, pnon_S, morphemes, agt, a3sg, noun, pnon, nom, vPass_S, vAble_S
 
 lex = RootLexicon.from_lines(["adak", "elma", "beyaz [P:Adj]", "meyve"])
 
@@ -277,7 +277,7 @@ def test_HasTailSequence(beyazlastirici_paths):
 
 def test_ContainsMorphemeSequence(beyazlastirici_paths):
     path = beyazlastirici_paths[3]
-   
+
     assert ContainsMorphemeSequence(morphemes['Adj'],
                                     morphemes['Become'],
                                     morphemes['Verb']
@@ -293,6 +293,11 @@ def test_ContainsMorphemeSequence(beyazlastirici_paths):
     assert ContainsMorphemeSequence(morphemes['Become']).accept(path)
     assert not ContainsMorphemeSequence(morphemes['Become'], morphemes['Caus']).accept(path)
 
+
+def test_LastDerivationIsAny(beyazlastirici_paths):
+    path = beyazlastirici_paths[3]
+    assert LastDerivationIsAny(vCausTır_S, vPass_S, vAble_S).accept(path)
+    assert not LastDerivationIsAny(become_S).accept(path)
 
     # TODO: SecondaryPosIs
     # TODO: RootSurfaceIs
