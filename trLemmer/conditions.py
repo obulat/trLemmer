@@ -322,6 +322,7 @@ class HasDerivation(Condition):
         return "HasDerivation"
 
 
+# tested
 class LastDerivationIsAny(Condition):
     def __init__(self, *states):
         self.states = states
@@ -337,6 +338,7 @@ class LastDerivationIsAny(Condition):
         return f"LastDerivationIsAny({self.states})"
 
 
+# tested
 class CurrentGroupContainsAny(Condition):
     """Checks if any of the "MorphemeState" in "states" exist in current Inflectional Group.
     If previous group starts after a derivation, derivation MorphemeState is also checked.
@@ -359,6 +361,7 @@ class CurrentGroupContainsAny(Condition):
         return f"CurrentGroupContainsAny({self.states})"
 
 
+# tested
 class PreviousGroupContains(Condition):
     """ Checks if any of the "MorphemeState" in "states" exist in previous Inflectional Group.
     # If previous group starts after a derivation, derivation MorphemeState is also checked.
@@ -387,6 +390,7 @@ class PreviousGroupContains(Condition):
         return f"PreviousGroupContains({self.states})"
 
 
+# tested
 class PreviousGroupContainsMorpheme(Condition):
     """Checks if any of the "Morpheme" in "morphemes" exist in previous Inflectional Group.
     If previous group starts after a derivation, derivation Morpheme is also checked.
@@ -409,7 +413,7 @@ class PreviousGroupContainsMorpheme(Condition):
                 return True
             if sf.state.derivative:
                 return False
-            return False
+        return False
 
     def __repr__(self):
         morpheme_str = ', '.join([m.id_ for m in self.morphemes])

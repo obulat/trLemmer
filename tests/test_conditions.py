@@ -9,7 +9,8 @@ from trLemmer.attributes import RootAttribute, PhoneticAttribute, \
 from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, DictionaryItemIs, not_have, \
     HasPhoneticAttribute, DictionaryItemIsAny, NoSurfaceAfterDerivation, HasAnySuffixSurface, HasTail, \
     PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot, HasTailSequence, \
-    ContainsMorphemeSequence, LastDerivationIsAny, PreviousGroupContains, CurrentGroupContainsAny
+    ContainsMorphemeSequence, LastDerivationIsAny, PreviousGroupContains, CurrentGroupContainsAny, \
+    PreviousGroupContainsMorpheme
 from trLemmer.lexicon import RootLexicon
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
     adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
@@ -327,11 +328,18 @@ def test_PreviousGroupContainsAny(beyazlastirici_paths):
     assert not PreviousGroupContains(vAgt_S).accept(path)
     assert not PreviousGroupContains(become_S).accept(path)
 
+
+def test_PreviousGroupContainsMorpheme(beyazlastirici_paths):
+    path = beyazlastirici_paths[4]
+    # WHERE the previous infl group is: become_S + verbRoot_S
+    # the current inflection group is ici:vCausTir_S+verbRoot_S
+    assert not PreviousGroupContainsMorpheme(morphemes['Caus']).accept(path)
+    assert PreviousGroupContainsMorpheme(morphemes['Become']).accept(path)
+    assert PreviousGroupContainsMorpheme(morphemes['Verb']).accept(path)
+
     # TODO: SecondaryPosIs
     # TODO: RootSurfaceIs
     # TODO: RootSurfaceIsAny
-    # TODO: CurrentGroupContainsAny
-    # TODO: PreviousGroupContainsMorpheme
     # TODO: ContainsMorpheme
     # TODO: PreviousMorphemeIsAny
     # TODO: PreviousStateIsAny
