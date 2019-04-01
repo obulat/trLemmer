@@ -457,6 +457,7 @@ class ContainsMorpheme(Condition):
 
 
 class PreviousMorphemeIsAny(Condition):
+    """Second before last morpheme"""
     def __init__(self, *morphemes):
         self.morphemes = morphemes
 

@@ -10,7 +10,7 @@ from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, Dictio
     HasPhoneticAttribute, DictionaryItemIsAny, NoSurfaceAfterDerivation, HasAnySuffixSurface, HasTail, \
     PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot, HasTailSequence, \
     ContainsMorphemeSequence, LastDerivationIsAny, PreviousGroupContains, CurrentGroupContainsAny, \
-    PreviousGroupContainsMorpheme
+    PreviousGroupContainsMorpheme, ContainsMorpheme, PreviousMorphemeIsAny, PreviousStateIsAny
 from trLemmer.lexicon import RootLexicon
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
     adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
@@ -337,9 +337,29 @@ def test_PreviousGroupContainsMorpheme(beyazlastirici_paths):
     assert PreviousGroupContainsMorpheme(morphemes['Become']).accept(path)
     assert PreviousGroupContainsMorpheme(morphemes['Verb']).accept(path)
 
-    # TODO: SecondaryPosIs
-    # TODO: RootSurfaceIs
-    # TODO: RootSurfaceIsAny
-    # TODO: ContainsMorpheme
-    # TODO: PreviousMorphemeIsAny
-    # TODO: PreviousStateIsAny
+
+def test_ContainsMorpheme(beyazlastirici_paths):
+    path = beyazlastirici_paths[4]
+    assert ContainsMorpheme(morphemes['Verb']).accept(path)
+    assert ContainsMorpheme(morphemes['Agt']).not_().accept(path)
+    assert not ContainsMorpheme(morphemes['JustLike']).accept(path)
+
+
+def test_PreviousMorphemeIsAny(beyazlastirici_paths):
+    path = beyazlastirici_paths[4]
+    # WHERE path end is: become_S + verbRoot_S+ici:vCausTir_S+verbRoot_S
+    assert not PreviousMorphemeIsAny(morphemes['Verb'],
+                                     morphemes['Noun']).accept(path)
+    assert PreviousMorphemeIsAny(morphemes['Caus']).accept(path)
+
+
+def test_PreviousStateIsAny(beyazlastirici_paths):
+    path = beyazlastirici_paths[4]
+    # WHERE path end is: become_S + verbRoot_S+ici:vCausTir_S+verbRoot_S
+    assert not PreviousStateIsAny(morphemes['Verb'],
+                                  morphemes['Noun']).accept(path)
+    assert PreviousMorphemeIsAny(morphemes['Caus']).accept(path)
+
+# TODO: SecondaryPosIs
+# TODO: RootSurfaceIs
+# TODO: RootSurfaceIsAny
