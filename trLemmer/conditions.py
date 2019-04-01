@@ -209,7 +209,6 @@ class ContainsMorphemeSequence(Condition):
         self.morphemes = morphemes
 
     def accept(self, path):
-
         forms = path.transitions
         if len(forms) < len(self.morphemes):
             return False
@@ -220,7 +219,8 @@ class ContainsMorphemeSequence(Condition):
                 if m == len(self.morphemes):
                     return True
             else:
-                return False
+                m = 0
+        return False
 
     def __repr__(self):
         return f"ContainsMorphemeSequence({self.morphemes})"

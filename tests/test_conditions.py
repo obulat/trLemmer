@@ -8,7 +8,8 @@ from trLemmer.attributes import RootAttribute, PhoneticAttribute, \
     calculate_phonetic_attributes
 from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, DictionaryItemIs, not_have, \
     HasPhoneticAttribute, DictionaryItemIsAny, NoSurfaceAfterDerivation, HasAnySuffixSurface, HasTail, \
-    PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot, HasTailSequence
+    PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot, HasTailSequence, \
+    ContainsMorphemeSequence
 from trLemmer.lexicon import RootLexicon
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
     adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
@@ -273,9 +274,27 @@ def test_HasTailSequence(beyazlastirici_paths):
     assert not HasTailSequence(agt, noun, a3sg, pnon).accept(path)
     assert HasTailSequence(pnon, nom).accept(path)
 
+
+def test_ContainsMorphemeSequence(beyazlastirici_paths):
+    path = beyazlastirici_paths[3]
+   
+    assert ContainsMorphemeSequence(morphemes['Adj'],
+                                    morphemes['Become'],
+                                    morphemes['Verb']
+                                    ).accept(path)
+    assert ContainsMorphemeSequence(morphemes['Adj'],
+                                    morphemes['Become']
+                                    ).accept(path)
+    assert ContainsMorphemeSequence(morphemes['Become'],
+                                    morphemes['Verb'],
+                                    morphemes['Caus']
+                                    ).accept(path)
+
+    assert ContainsMorphemeSequence(morphemes['Become']).accept(path)
+    assert not ContainsMorphemeSequence(morphemes['Become'], morphemes['Caus']).accept(path)
+
+
     # TODO: SecondaryPosIs
-    # TODO: HasTailSequence
-    # TODO: ContainsMorphemeSequence
     # TODO: RootSurfaceIs
     # TODO: RootSurfaceIsAny
     # TODO: LastDerivationIsAny
