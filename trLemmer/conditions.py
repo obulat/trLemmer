@@ -175,7 +175,8 @@ class HasAnySuffixSurface(Condition):
     def __repr__(self):
         return "HasAnySuffixSurface{}"
 
-#tested
+
+# tested
 class HasTail(Condition):
     # accepts if path has letters to consume.
 
@@ -194,13 +195,9 @@ class HasTailSequence(Condition):
         forms = path.transitions
         if len(forms) < len(self.morphemes):
             return False
-        i = 0
-        j = len(forms) - len(self.morphemes)
-        while i < len(self.morphemes):
-            if self.morphemes[i + 1] != forms[j + 1].morpheme:
+        for form, morph in zip(forms[-len(self.morphemes):], self.morphemes):
+            if form.morpheme != morph:
                 return False
-            i += 1
-            j += 1
         return True
 
     def __repr__(self):
@@ -240,6 +237,7 @@ class PreviousMorphemeIs(Condition):
 
     def __repr__(self):
         return f"PreviousMorphemeIs({self.morpheme.id_})"
+
 
 # tested
 class PreviousStateIs(Condition):
@@ -474,4 +472,3 @@ class PreviousStateIsAny(Condition):
     def accept(self, path):
         previous_state = path.previous_state
         return previous_state is not None and previous_state in self.states
-

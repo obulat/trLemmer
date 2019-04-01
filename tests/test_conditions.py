@@ -8,11 +8,11 @@ from trLemmer.attributes import RootAttribute, PhoneticAttribute, \
     calculate_phonetic_attributes
 from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, DictionaryItemIs, not_have, \
     HasPhoneticAttribute, DictionaryItemIsAny, NoSurfaceAfterDerivation, HasAnySuffixSurface, HasTail, \
-    PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot
+    PreviousMorphemeIs, PreviousStateIs, LastDerivationIs, HasDerivation, PreviousStateIsNot, HasTailSequence
 from trLemmer.lexicon import RootLexicon
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
     adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
-    nom_ST, vAgt_S, a3sg_S, pnon_S
+    nom_ST, vAgt_S, a3sg_S, pnon_S, morphemes, agt, a3sg, noun, pnon, nom
 
 lex = RootLexicon.from_lines(["adak", "elma", "beyaz [P:Adj]", "meyve"])
 
@@ -265,6 +265,13 @@ def test_LastDerivationIs(beyazlastirici_paths):
     # tır:vCausTır_S + verbRoot_S + ıcı:vAgt_S
     assert LastDerivationIs(vAgt_S).accept(paths[5])
     assert not LastDerivationIs(vCausTır_S).accept(paths[5])
+
+
+def test_HasTailSequence(beyazlastirici_paths):
+    path = beyazlastirici_paths[-1]
+    assert HasTailSequence(agt, noun, a3sg, pnon, nom).accept(path)
+    assert not HasTailSequence(agt, noun, a3sg, pnon).accept(path)
+    assert HasTailSequence(pnon, nom).accept(path)
 
     # TODO: SecondaryPosIs
     # TODO: HasTailSequence
