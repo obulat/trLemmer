@@ -1,16 +1,167 @@
+import re
 from collections import namedtuple
 from enum import Enum
 from pathlib import Path
 from typing import List, Set
 
 from trLemmer.attributes import RootAttribute, PrimaryPos, SecondaryPos, primary_pos_set, \
-    secondary_pos_set, morphemic_attributes
+    secondary_pos_set, parse_attr_data, infer_morphemic_attributes, PosInfo
 from trLemmer import tr
 
 
-class PronunciationGuesser:
-    def __init__(self):
-        pass
+def load_dict(path):
+    result = {}
+    with open(path, 'r', encoding='utf8') as inf:
+        for line in inf:
+            if line.strip().startswith('##') or len(line.strip()) == 0:
+                continue
+            k, v = [_.strip() for _ in line.split('=')]
+            result[k] = v
+    return result
+
+
+RESOURCES_DIR = Path(__file__).parent / 'resources'
+tr_letter_pron = load_dict(RESOURCES_DIR / "tr" / "phonetics" / "turkish-letter-names.txt")
+en_letter_pron = load_dict(Path(RESOURCES_DIR / "tr" / "phonetics" / "turkish-letter-names.txt"))
+en_phones_to_tr = load_dict(Path(RESOURCES_DIR / "tr" / "phonetics" / "english-phones-to-turkish.txt"))
+
+
+def to_turkish_letter_pronunciation(word):
+    if bool(re.search(r'\d', word)):
+        return to_turkish_letter_pronunciation_with_digit(word)
+    result = []
+    for i in range(len(word)):
+        c = word[i].lower()
+        if c == '-':
+            continue
+        if c in tr_letter_pron:
+            if i == len(word) - 1 and c == 'k':
+                result.append("ka")
+            else:
+                result.append(tr_letter_pron[c])
+        else:
+            print(f"Cannot guess pronunciation of letter {c} in : {word}")
+    return ''.join(result)
+
+
+def to_turkish_letter_pronunciation_with_digit(word):
+    pieces = re.split(r'(\d+)', word)
+    result = []
+    i = 0
+    for piece in pieces:
+        if bool(re.search(r'\d', piece)):
+            result.append(turkish_numbers_to_string(piece))
+            i += 1
+            continue
+        if i < len(pieces) - 1:
+            result.append(to_turkish_letter_pronunciation(piece))
+        else:
+            result.append(replace_english_specific_chars(piece))
+        i += 1
+
+    return ''.join(result)  # replace('[ ]+', '')
+
+
+singleDigitNumbers = ["", "bir", "iki", "üç", "dört", "beş", "altı", "yedi", "sekiz", "dokuz"]
+tenToNinety = ["", "on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan"]
+thousands = ["", "bin", "milyon", "milyar", "trilyon", "katrilyon"]
+
+
+def convert_three_digit(threeDigitNumber):
+    """
+    converts a given three digit number.
+    :param threeDigitNumber: a three digit number to convert to words.
+    :return: turkish string representation of the input number.
+    """
+    result = ''
+
+    hundreds = threeDigitNumber // 100
+    tens = threeDigitNumber // 10
+    single_digit = threeDigitNumber % 10
+
+    if hundreds != 0:
+        result = "yüz"
+
+    if hundreds > 1:
+        result = singleDigitNumbers[hundreds] + " " + result
+
+    result = result + " " + tenToNinety[tens] + " " + singleDigitNumbers[single_digit]
+    return result.strip()
+
+
+def convert_to_string(number):
+    """
+    returns the Turkish representation of the input. if negative "eksi" string is prepended.
+    @param input: input. must be between (including both) -999999999999999999L to
+       * 999999999999999999L
+       * @return Turkish representation of the input. if negative "eksi" string is prepended.
+       * @throws IllegalArgumentException if input value is too low or high.
+    """
+    MIN_NUMBER = -999999999999999999
+    MAX_NUMBER = 999999999999999999
+    if number == 0:
+        return "sıfır"
+    if number < MIN_NUMBER or number > MAX_NUMBER:
+        raise ValueError(f"Number is out of bounds: {number}")
+    result = ""
+    current_pos = abs(number)
+    counter = 0
+    while current_pos >= 1:
+        group_of_three = int(current_pos % 1000)
+        if group_of_three != 0:
+            if group_of_three == 1 and counter == 1:
+                result = thousands[counter] + " " + result
+            else:
+                result = convert_three_digit(group_of_three) + " " + thousands[counter] + " " + result
+        counter += 1
+        current_pos /= 1000
+
+    if number < 0:
+        return "eksi " + result.strip()
+    else:
+        return result.strip()
+
+
+def turkish_numbers_to_string(word):
+    """Methods converts a String containing an integer to a Strings."""
+    if word.startswith("+"):
+        word = word[1:]
+    result = []
+    i = 0
+    for c in word:
+        if c == '0':
+            result.append("sıfır")
+            i += 0
+        else:
+            break
+    rest = word[i:]
+    if len(rest) > 0:
+        result.append(convert_to_string(int(rest)))  # TODO: probably error, was blank
+    # result.append(int(rest))
+    return ' '.join(result)
+
+
+def replace_english_specific_chars(word):
+    replacement = {'w': 'v',
+                   'q': 'k',
+                   'x': 'ks',
+                   '-': '',
+                   "\\": ''}
+    return ''.join([replacement.get(sym, sym) for sym in word])
+
+
+def guess_for_abbreviation(word):
+    """Tries to guess turkish abbreviation pronunciation."""
+    syllables = tr.vowel_count(word)
+
+    first_two_cons = False
+    if len(word) > 2:
+        if tr.contains_vowel(word[:2]):
+            first_two_cons = True
+    if syllables == 0 or len(word) < 3 or first_two_cons:
+        return to_turkish_letter_pronunciation(word)
+    else:
+        return replace_english_specific_chars(word)
 
 
 class MetaDataId(Enum):
@@ -21,9 +172,6 @@ class MetaDataId(Enum):
     PRONUNCIATION = "Pr"
     SUFFIX = "S"
     INDEX = "Index"
-
-
-PosInfo = namedtuple("PosInfo", "primary_pos secondary_pos")
 
 
 #  A function that parses raw word and metadata information. Represents a single line in dictionary.
@@ -57,7 +205,10 @@ class TextLexiconProcessor:
 
     def process_lines(self, lines):
         for line in lines:
-            self.process_line(line)
+            line = line.strip()
+            if len(line) > 0 and not line.startswith("##"):
+                self.process_line(line)
+        self.get_result()
 
     def process_line(self, line):
         line = line.strip()
@@ -66,17 +217,15 @@ class TextLexiconProcessor:
 
         line_data = parse_line_data(line)
         # if a line contains references to other lines, we add them to lexicon later.
-        try:
-            if MetaDataId.REF_ID not in line_data['metadata'] and MetaDataId.ROOTS not in line_data['metadata']:
-                dict_item = self.parse_dict_item(line_data)
-                if dict_item is not None:
-                    self.lexicon.add(dict_item)
-                else:
-                    print(f"Dict item is none: {line_data}")
+
+        if MetaDataId.REF_ID not in line_data['metadata'] and MetaDataId.ROOTS not in line_data['metadata']:
+            dict_item = self.parse_dict_item(line_data)
+            if dict_item is not None:
+                self.lexicon.add(dict_item)
             else:
-                self.late_entries.append(line_data)
-        except Exception as e:
-            print(f"Exception {e} raised while adding dict item from {line_data}")
+                print(f"Dict item is none: {line_data}")
+        else:
+            self.late_entries.append(line_data)
 
     @staticmethod
     def is_verb(word):
@@ -101,11 +250,13 @@ class TextLexiconProcessor:
         if pos_info.primary_pos == PrimaryPos.Verb and TextLexiconProcessor.is_verb(word):
             word = word[:-3]
 
-            #  TODO: not sure if we should remove diacritics or convert to lowercase.
-            #  Lowercase and normalize diacritics.
-            word = tr.normalize_circumflex(tr.lower(word))
-            # Remove dashes
-            #  DASH_QUOTE_MATCHER.matcher(word).replaceAll("")
+        #  TODO: not sure if we should remove diacritics or convert to lowercase.
+        #  Lowercase and normalize diacritics.
+        word = tr.normalize_circumflex(tr.lower(word))
+        # Remove dashes
+        word = word.replace("-", "")
+        word = word.replace("'", "")
+
         return word
 
     @staticmethod
@@ -129,7 +280,7 @@ class TextLexiconProcessor:
             for token in tokens:
                 if token in primary_pos_set:
                     if primary_pos is None:
-                        primary_pos = PrimaryPos(token)  # TODO: Test this works
+                        primary_pos = PrimaryPos(token)
                         continue
                     else:
                         if pos_str == "Pron,Ques":
@@ -159,29 +310,26 @@ class TextLexiconProcessor:
         pos_info = self.get_pos_data(metadata.get(MetaDataId.POS), word)
         clean_word = self.generate_root(word, pos_info)
         index_str = metadata.get(MetaDataId.INDEX)
-        index = 0
-        if index_str is not None:
-            index = int(index_str)
+        index = 0 if index_str is None else int(index_str)
         pronunciation = metadata.get(MetaDataId.PRONUNCIATION)
         pronunciation_guessed = False
         secondary_pos = pos_info.secondary_pos
         if pronunciation is None:
             pronunciation_guessed = True
             if pos_info.primary_pos == PrimaryPos.Punctuation:
-                # TODO: what to do with pronunciations of punctuations? For now we give them a generic one.
                 pronunciation = "a"
             elif secondary_pos == SecondaryPos.Abbreviation:
-                pronunciation = PronunciationGuesser.guessForAbbreviation(clean_word)
+                pronunciation = guess_for_abbreviation(clean_word)
             elif tr.contains_vowel(clean_word):
                 pronunciation = clean_word
             else:
-                pronunciation = PronunciationGuesser.toTurkishLetterPronunciations(clean_word)
+                pronunciation = to_turkish_letter_pronunciation(clean_word)
         else:
             pronunciation = tr.lower(pronunciation)
 
-        attributes = morphemic_attributes(metadata.get(MetaDataId.ATTRIBUTES),
-                                                               pronunciation,
-                                                               pos_info)
+        attr_data = metadata.get(MetaDataId.ATTRIBUTES)
+        parsed_attributes = parse_attr_data(attr_data) if attr_data is not None else None
+        attributes = infer_morphemic_attributes(pronunciation, pos_info, parsed_attributes)
         if pronunciation_guessed and (
             secondary_pos == SecondaryPos.ProperNoun or secondary_pos == SecondaryPos.Abbreviation):
             attributes.add(RootAttribute.PronunciationGuessed)
@@ -200,58 +348,60 @@ class TextLexiconProcessor:
                 break
         try:
 
-            return DictionaryItem(word, clean_word, pos_info.primary_pos, secondary_pos, attributes, pronunciation,
-                                  index)
+            return DictionaryItem(lemma=word, root=clean_word,
+                                  primary_pos=pos_info.primary_pos, secondary_pos=secondary_pos,
+                                  attrs=attributes, pronunciation=pronunciation,
+                                  index=index)
         except Exception as e:
-            print(f"Couldn't create {word}/{index}/ {type(index)} dictionary item, error: {e} ")
+            print(f"Could not create {word}/{index}/ {type(index)} dictionary item, error: {e} ")
 
     def get_result(self):
         for entry in self.late_entries:
-            if MetaDataId.REF_ID in entry.metadata:
-                reference_id = entry.metadata.get(MetaDataId.REF_ID)
+            if MetaDataId.REF_ID in entry['metadata']:
+                reference_id = entry['metadata'].get(MetaDataId.REF_ID)
                 if '_' not in reference_id:
-                    reference_id += "_Noun"
+                    reference_id = f"{reference_id}_Noun"
 
                 ref_item = self.lexicon.id_dict.get(reference_id)
                 if ref_item is None:
                     print("Cannot find reference item id " + reference_id)
                 item = self.parse_dict_item(entry)
-                item.reference_item = ref_item
+                item.ref_item = ref_item
                 self.lexicon.add(item)
             # this is a compound lemma with P3sg in it. Such as atkuyruğu
-            if MetaDataId.ROOTS in entry.metadata:
-                pos_info = self.get_pos_data(entry.getMetaData(MetaDataId.POS), entry.word)
-                generated_id = f"{self.lexicon.id_dict.get(entry.word)}_{pos_info.primary_pos.value}"
-                # TODO: Test _value_ works here for short_form
+            if MetaDataId.ROOTS in entry['metadata']:
+                pos_data_str = entry['metadata'].get(MetaDataId.POS)
+                pos_info = self.get_pos_data(pos_data_str, entry['word'])
+                generated_id = f"{entry['word']}_{pos_info.primary_pos.value}"
                 item = self.lexicon.id_dict.get(generated_id)
                 if item is None:
                     item = self.parse_dict_item(entry)
                     self.lexicon.add(item)
-                r = entry.metadata.get(MetaDataId.ROOTS)  # at-kuyruk
+                r = entry['metadata'].get(MetaDataId.ROOTS)  # at-kuyruk
                 root = r.replace("-", "")  # atkuyruk
                 if "-" in r:
-                    r = r[:r.index('-')]
+                    r = r[r.index('-') + 1:]
                 ref_items = self.lexicon.get_matching_items(r)  # check lexicon for [kuyruk]
                 if len(ref_items) > 0:
-                    ref_item = sorted(ref_items, key=lambda item: item['index'])[0]
-                    attr_set = ref_item.attrs
+                    ref_item = sorted(ref_items, key=lambda item: item.index)[0]
+                    attr_set = ref_item.attributes.copy()
                 else:
-                    attr_set = morphemic_attributes(None, root, pos_info)
-
+                    attr_set = infer_morphemic_attributes(root, pos_info, set())
                 attr_set.add(RootAttribute.CompoundP3sgRoot)
                 if RootAttribute.Ext in item.attributes:
                     attr_set.add(RootAttribute.Ext)
                 index = 0
-                if self.lexicon.id_dict.get(f"{root}_{item.primary_pos.value}") is not None:
-                    # TODO: Test _value_ works here for short_form
+                dict_item_id = f"{root}_{item.primary_pos.value}"
+                if self.lexicon.id_dict.get(dict_item_id) is not None:
+                    index = 1
                     # generate a fake lemma for atkuyruk, use kuyruk's attributes.
                     # But do not allow voicing.
-                    fake_root = DictionaryItem(root, root, item.primary_pos, item.secondary_pos, attr_set, root, index)
-                    fake_root.attributes.add(RootAttribute.Dummy)
-                    if RootAttribute.Voicing in fake_root.attributes:
-                        fake_root.attributes.remove(RootAttribute.Voicing)
-                    fake_root.reference_item = item
-                    self.lexicon.add(fake_root)
+                fake_root = DictionaryItem(root, root, item.primary_pos, item.secondary_pos, attr_set, root, index)
+                fake_root.attributes.add(RootAttribute.Dummy)
+                if RootAttribute.Voicing in fake_root.attributes:
+                    fake_root.attributes.remove(RootAttribute.Voicing)
+                fake_root.reference_item = item
+                self.lexicon.add(fake_root)
         return self.lexicon
 
 
@@ -286,8 +436,13 @@ class DictionaryItem:
     :type: int
     """
 
-    def __init__(self, lemma: str, root: str, primary_pos: PrimaryPos, secondary_pos: SecondaryPos, attrs: Set,
-                 pronunciation: str, index: int):
+    def __init__(self, lemma: str,
+                 root: str,
+                 primary_pos: PrimaryPos,
+                 secondary_pos: SecondaryPos,
+                 attrs: Set,
+                 pronunciation: str,
+                 index: int):
         """
         :id_(str)is the unique ID of the item. It is generated from Pos and lemma.
         If there are multiple items with same POS and Lemma user needs to add an index for
@@ -303,6 +458,7 @@ class DictionaryItem:
         self.root = root
         self.index = index
         self.id_ = self.generate_id()
+        self.ref_item = None
 
     def __str__(self):
         result = f"{self.lemma} [P:{self.primary_pos.value}]"
@@ -312,11 +468,7 @@ class DictionaryItem:
         return f"DictionaryItem({self.id_})"
 
     def has_any_attribute(self, root_attrs):
-        if type(root_attrs) == tuple:
-            print(f"{self.lemma} tuple in has any attributes")
-            print(f"Root attr: {set(root_attrs)}\nself.attributes: {self.attributes}")
-            print(set(root_attrs) & self.attributes)
-            print(bool(set(root_attrs) & self.attributes))
+
         return bool(set(root_attrs) & self.attributes)
 
     def has_attribute(self, attr):
@@ -340,12 +492,13 @@ class DictionaryItem:
 class RootLexicon:
     RESOURCES_DIR = Path(__file__).parent / 'resources'
     DEFAULT_DICTIONARY_RESOURCES = [
-        "tr/master-dictionary.dict"  # ,
-        # "tr/non-tdk.dict",
-        # "tr/proper.dict",
-        # "tr/proper-from-corpus.dict",
-        # "tr/abbreviations.dict",
-        # "tr/person-names.dict"
+        # "tr/test.dict"
+        "tr/master-dictionary.dict",
+        "tr/non-tdk.dict",
+        "tr/proper.dict",
+        "tr/proper-from-corpus.dict",
+        "tr/abbreviations.dict",
+        "tr/person-names.dict"
     ]
 
     def __init__(self):
@@ -373,14 +526,16 @@ class RootLexicon:
         return lexicon
 
     def add(self, item):
-        if item in self.item_set:
-            print(f"Duplicated item: {item}")
-            return
+
         if item.id_ in self.id_dict:
-            print(f"Duplicated item id_ of {item} with {self.id_dict.get(item.id_)}")
+            print(f"Duplicated item id_ of {item}: {item.id_} with {self.id_dict.get(item.id_)}")
+            return
         self.item_set.add(item)
         self.id_dict[item.id_] = item
-        self.item_dict[item.lemma] = item
+        if item.lemma in self.item_dict:
+            self.item_dict[item.lemma].append(item)
+        else:
+            self.item_dict[item.lemma] = [item]
 
     def get_matching_items(self, lemma):
         items = self.item_dict.get(lemma)
