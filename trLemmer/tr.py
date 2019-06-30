@@ -21,20 +21,10 @@ consonants_voiced_stop_set = {'c', 'g', 'b', 'd'}
 vowels_back_set = {'a', 'ı', 'o', 'u'}  # TODO: sapkalilar?
 vowels_rounded_set = {'o', 'u', 'ö', 'ü', 'û'}
 
-# lower_to_upper = dict(zip(all_lower, all_upper))
-# upper_to_lower = dict(zip(all_upper, all_lower))
-
 lower_to_upper = str.maketrans(all_lower, all_upper)
 upper_to_lower = str.maketrans(all_upper, all_lower)
 voicing = str.maketrans('çgkpt', 'cğğbd')
 devoicing = str.maketrans('bcdgğ', 'pçtkk')
-
-# voicing = {'ç': 'c',
-#            'g': 'ğ',
-#            'k': 'ğ',
-#            'p': 'b',
-#            't': 'd'}
-# devoicing = {'b': 'p', 'c': 'ç', 'd': 't', 'g': 'k', 'ğ': 'k'}
 
 single_map = str.maketrans("""‚ƒ„†ˆ‹‘’“”•–—˜›""",  # <1>
                            """'f"*^<''""---~>""")
@@ -59,22 +49,18 @@ def dewinize(txt):
 
 def voice(letter):
     return letter.translate(voicing)
-    # return voicing.get(letter, letter)
 
 
 def devoice(letter):
     return letter.translate(devoicing)
-    # return devoicing.get(letter, letter)
 
 
 def lower(word) -> str:
     return word.translate(upper_to_lower)
-    # return ''.join([upper_to_lower.get(letter, letter) for letter in word])
 
 
 def upper(word) -> str:
     return word.translate(lower_to_upper)
-    # return ''.join([lower_to_upper.get(letter, letter) for letter in word])
 
 
 def is_upper(symbol) -> bool:
@@ -118,11 +104,8 @@ def is_voiceless_stop_consonant(symbol):
 
 circumflex = "âîûÂÎÛ"
 noncircumflex = "aiuAIU"
-# decircumflex = dict(zip(circumflex, noncircumflex))
 decircumflex = str.maketrans(circumflex, noncircumflex)
 
 
 def normalize_circumflex(word):
     return word.translate(decircumflex)
-    # result = ''.join([decircumflex.get(c, c) for c in word])
-    # return result
