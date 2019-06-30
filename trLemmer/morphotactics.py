@@ -161,17 +161,17 @@ pnon = add_morpheme("NoPosession", "Pnon", None, False, False)
 # First person singular possession suffix.  "elma-m = my apple"
 p1sg = add_morpheme("FirstPersonSingularPossessive", "P1sg", None, False, False)
 
-p2sg = Morpheme("SecondPersonSingularPossessive", "P2sg", None, False, False)
+p2sg = add_morpheme("SecondPersonSingularPossessive", "P2sg", None, False, False)
 
 # Third person singular possession suffix. "elma-sı = his/her apple"
-p3sg = Morpheme("ThirdPersonSingularPossessive", "P3sg", None, False, False)
+p3sg = add_morpheme("ThirdPersonSingularPossessive", "P3sg", None, False, False)
 
 # First person plural possession suffix.
-p1pl = Morpheme("FirstPersonPluralPossessive", "P1pl", None, False, False)
+p1pl = add_morpheme("FirstPersonPluralPossessive", "P1pl", None, False, False)
 
-p2pl = Morpheme("SecondPersonPluralPossessive", "P2pl", None, False, False)
+p2pl = add_morpheme("SecondPersonPluralPossessive", "P2pl", None, False, False)
 
-p3pl = Morpheme("ThirdPersonPluralPossessive", "P3pl", None, False, False)
+p3pl = add_morpheme("ThirdPersonPluralPossessive", "P3pl", None, False, False)
 
 # Case suffixes
 
@@ -237,21 +237,21 @@ inf3 = add_morpheme("Infinitive3", "Inf3", None, True, False)
 # okumaca (Noun)
 actOf = add_morpheme("ActOf", "ActOf", None, True, False)
 # okuduğum kitap (Adj, Noun)
-pastPart = Morpheme("PastParticiple", "PastPart", None, True, False)
+pastPart = add_morpheme("PastParticiple", "PastPart", None, True, False)
 # okumuşlarımız (Adj, Noun)
-narrPart = Morpheme("NarrativeParticiple", "NarrPart", None, True, False)
+narrPart = add_morpheme("NarrativeParticiple", "NarrPart", None, True, False)
 # okuyacağım kitap (Adj, Noun)
-futPart = Morpheme("FutureParticiple", "FutPart", None, True, False)
+futPart = add_morpheme("FutureParticiple", "FutPart", None, True, False)
 # okuyan (Adj, Noun)
-presPart = Morpheme("PresentParticiple", "PresPart", None, True, False)
+presPart = add_morpheme("PresentParticiple", "PresPart", None, True, False)
 # okurluk (Noun)
-aorPart = Morpheme("AoristParticiple", "AorPart", None, True, False)
+aorPart = add_morpheme("AoristParticiple", "AorPart", None, True, False)
 # okumazlık - okumamazlık (Noun)
 notState = add_morpheme("NotState", "NotState", None, True, False)
 # okuyan (Adj, Noun)
 feelLike = add_morpheme("FeelLike", "FeelLike", None, True, False)
 # okuyagel (Verb)
-everSince = Morpheme("EverSince", "EverSince", None, True, False)
+everSince = add_morpheme("EverSince", "EverSince", None, True, False)
 # okuyadur, okuyagör (Verb)
 repeat = add_morpheme("Repeat", "Repeat", None, True, False)
 # okuyayaz (Verb)
@@ -269,15 +269,15 @@ while_ = add_morpheme("While", "While", None, True, False)
 # okuyunca (Adv)
 when = add_morpheme("When", "When", None, True, False)
 # okuyalı (Adv)
-sinceDoingSo = Morpheme("SinceDoingSo", "SinceDoingSo", None, True, False)
+sinceDoingSo = add_morpheme("SinceDoingSo", "SinceDoingSo", None, True, False)
 # okudukça (Adv)
 asLongAs = add_morpheme("AsLongAs", "AsLongAs", None, True, False)
 # okuyarak (Adv)
-byDoingSo = Morpheme("ByDoingSo", "ByDoingSo", None, True, False)
+byDoingSo = add_morpheme("ByDoingSo", "ByDoingSo", None, True, False)
 # okuyasıya (Adv)
-adamantly = Morpheme("Adamantly", "Adamantly", None, True, False)
+adamantly = add_morpheme("Adamantly", "Adamantly", None, True, False)
 # okuyup (Adv)
-afterDoingSo = Morpheme("AfterDoingSo", "AfterDoingSo", None, True, False)
+afterDoingSo = add_morpheme("AfterDoingSo", "AfterDoingSo", None, True, False)
 # okumadan, okumaksızın (Adv)
 
 withoutHavingDoneSo = add_morpheme(
@@ -285,7 +285,7 @@ withoutHavingDoneSo = add_morpheme(
 )
 # okuyamadan (Adv)
 
-withoutBeingAbleToHaveDoneSo = Morpheme(
+withoutBeingAbleToHaveDoneSo = add_morpheme(
     "WithoutBeingAbleToHaveDoneSo", "WithoutBeingAbleToHaveDoneSo", None, True, False
 )
 
