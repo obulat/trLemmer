@@ -3,7 +3,7 @@
 
 """Tests for `trLemmer.conditions` module."""
 import pytest
-from trLemmer import TrLemmer
+from trLemmer import MorphAnalyzer
 from trLemmer.attributes import RootAttribute, PhoneticAttribute, \
     calculate_phonetic_attributes
 from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, DictionaryItemIs, not_have, \
@@ -27,7 +27,7 @@ def lex_from_lines():
 @pytest.fixture(scope='session')
 def mt_lexicon():
     """Connects morphotactics graph and returns full lexicon"""
-    lemmer = TrLemmer()
+    lemmer = MorphAnalyzer()
     return lemmer.lexicon
 
 
@@ -172,7 +172,7 @@ def beyazlastirici_paths(mt_lexicon):
         st, surface = state
         transition = SurfaceTransition(surface, SuffixTransition(previous_state, st))
         surface_transitions.append(transition)
-        new_attrs = calculate_phonetic_attributes(surface, attrs)
+        new_attrs = calculate_phonetic_attributes(surface, frozenset(attrs))
         new_path = paths[-1].copy(transition, new_attrs)
         paths.append(new_path)
         previous_state = st
