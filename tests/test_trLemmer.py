@@ -5,7 +5,7 @@
 
 import pytest
 
-from trLemmer import TrLemmer
+from trLemmer import MorphAnalyzer
 from trLemmer.attributes import SecondaryPos, PrimaryPos, calculate_phonetic_attributes
 from trLemmer.lexicon import DictionaryItem, RootLexicon
 from trLemmer.morphotactics import StemTransition, SearchPath, root_S
@@ -32,21 +32,6 @@ def dict_item():
     pronunciation = word
     index = 0
     return DictionaryItem(lemma, root, primary_pos, secondary_pos, attrs, pronunciation, index)
-
-
-def test_content(response):
-    """Sample pytest test function with the pytest fixture as an argument."""
-    # from bs4 import BeautifulSoup
-    # assert 'GitHub' in BeautifulSoup(response.content).title.string
-
-
-"""
-def test_trLemmer():
-    lemmer = TrLemmer()
-    word = "pencereden"
-    analysis = lemmer.analyze_word(word)
-    assert analysis == word
-"""
 
 
 def test_DictionaryItem_creation(dict_item):
@@ -125,7 +110,7 @@ def lex_from_lines():
 
 
 def test_analysis(lex_from_lines):
-    lemmer = TrLemmer(lexicon=lex_from_lines)
+    lemmer = MorphAnalyzer(lexicon=lex_from_lines)
     # analysis = lemmer.analyze_word('elma')
     # print(analysis)
     # assert analysis is not None
@@ -145,8 +130,8 @@ def test_default_lexicon():
 
 
 def test_sentence():
-    lemmer = TrLemmer()
-    sentence = "Hakkıdır hakka tapan milletimin istiklal!"
+    lemmer = MorphAnalyzer()
+    sentence = "Hakkıdır hakka tapan milletimin istiklâl!"
+    # sentence = "Seçimlerinde yaptıklarımız"
     result = lemmer.lemmatize_sentence(sentence)
-    for word in result:
-        print(word)
+    print(result)
