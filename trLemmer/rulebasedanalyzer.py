@@ -14,9 +14,10 @@ class RuleBasedAnalyzer:
     def __init__(self, morphotactics):
         self.morphotactics = morphotactics
         self.stem_transitions = morphotactics.stem_transitions
-        self.lexicon = self.morphotactics.lexicon
 
     def analyze(self, word):
+        from trLemmer.morphology import SingleAnalysis
+
         # get stem candidates.
         candidates = self.stem_transitions.prefix_matches(word)
 
@@ -32,7 +33,7 @@ class RuleBasedAnalyzer:
         # generate results from successful paths.
         result = []
         for path in result_paths:
-            analysis = SingleAnalysis.from_searchpath(path)
+            analysis = SingleAnalysis(path)
             result.append(analysis)
         return result
 
@@ -107,7 +108,7 @@ class RuleBasedAnalyzer:
             # if tail is equal to surface, no need to calculate phonetic attributes.
             tail_equals_surface = path.tail == surface
             attributes = path.phonetic_attributes if tail_equals_surface \
-                else calculate_phonetic_attributes(surface, path.phonetic_attributes)
+                else calculate_phonetic_attributes(surface, frozenset(path.phonetic_attributes))
 
             # This is required for suffixes like `cik` and `ciğ`
             # an extra attribute is added if "cik" or "ciğ" is generated and matches the tail.
@@ -144,25 +145,3 @@ class RuleBasedAnalyzer:
                 if not remove:
                     result.append(token)
         return result
-
-
-class SingleAnalysis:
-    """
-    This class represents a single morphological analysis result.
-    :param dict_item: Dictionary Item of the analysis.
-    :param morpheme_data_list: Contains Morphemes and their surface form (actual appearance in the normalized input)
-    List also contain the root (unchanged or modified) of the Dictionary item.
-    For example, for normalized input "kedilere"
-    This list may contain "kedi:Noun, ler:A3pl , e:Dat" information.
-    :param group_boundaries: groupBoundaries holds the index values of morphemes.
-    """
-
-    def __init__(self, dict_item, morpheme_data_list, group_boundaries):
-        self.dict_item = dict_item
-        self.morpheme_data_list = morpheme_data_list
-        self.group_boundaries = group_boundaries
-
-    @classmethod
-    def from_searchpath(cls, path):
-        return path
-
