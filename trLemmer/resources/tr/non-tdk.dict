@@ -1270,7 +1270,7 @@ güvenoylaması [A:CompoundP3sg, Ext; Roots:güven-oyla]
 güzelavratotu [A:Ext]
 güzelduyu [A:Ext]
 güzelduyusal [P:Adj; A:Ext]
-haa [P:Interj;;A:Ext]
+haa [P:Interj;A:Ext]
 haberalma [A:Ext]
 habire [A:Ext]
 hacıyağı [A:CompoundP3sg, Ext; Roots:hacı-yağ]
@@ -3403,7 +3403,7 @@ endorfin
 risotto
 kardiyo  [A:NoSuffix]
 straplez
-fastfood [pr:fastfud]
+fastfood [Pr:fastfud]
 fiks [P:Adj]
 oksitosin
 plasebo

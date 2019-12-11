@@ -420,7 +420,7 @@ class MorphAnalyzer:
             result.append((word, self.analyze_word(word)))
         return result
 
-    def lemmatize_sentence(self, sentence, no_punctuation):
+    def lemmatize_sentence(self, sentence, no_punctuation=True):
         import re
         from trLemmer import tr
         import string
