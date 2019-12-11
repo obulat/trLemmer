@@ -5,9 +5,9 @@
 
 import pytest
 
-from trLemmer import MorphAnalyzer
 from trLemmer.attributes import SecondaryPos, PrimaryPos, calculate_phonetic_attributes
 from trLemmer.lexicon import DictionaryItem, RootLexicon
+from trLemmer.morphology import MorphAnalyzer
 from trLemmer.morphotactics import StemTransition, SearchPath, root_S
 
 

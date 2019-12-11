@@ -3,7 +3,6 @@
 
 """Tests for `trLemmer.conditions` module."""
 import pytest
-from trLemmer import MorphAnalyzer
 from trLemmer.attributes import RootAttribute, PhoneticAttribute, \
     calculate_phonetic_attributes
 from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, DictionaryItemIs, not_have, \
@@ -12,6 +11,7 @@ from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, Dictio
     ContainsMorphemeSequence, LastDerivationIsAny, PreviousGroupContains, CurrentGroupContainsAny, \
     PreviousGroupContainsMorpheme, ContainsMorpheme, PreviousMorphemeIsAny, PreviousStateIsAny
 from trLemmer.lexicon import RootLexicon
+from trLemmer.morphology import MorphAnalyzer
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
     adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
     nom_ST, vAgt_S, a3sg_S, pnon_S, morphemes, agt, a3sg, noun, pnon, nom, vPass_S, vAble_S
@@ -178,7 +178,7 @@ def beyazlastirici_paths(mt_lexicon):
         previous_state = st
         attrs = new_attrs
 
-    # < (beyaz_Adj)(-)(beyaz: adjectiveRoot_ST + laş:become_S + verbRoot_S + tır: vCausTır_S + verbRoot_S 
+    # < (beyaz_Adj)(-)(beyaz: adjectiveRoot_ST + laş:become_S + verbRoot_S + tır: vCausTır_S + verbRoot_S
     # + ıcı:vAgt_S + noun_S + a3sg_S + pnon_S + nom_ST) >
     for path in paths:
         print(path)
