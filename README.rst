@@ -6,8 +6,8 @@ Turkish Lemmatizer
 .. image:: https://img.shields.io/pypi/v/trLemmer.svg
         :target: https://pypi.python.org/pypi/trLemmer
 
-.. image:: https://img.shields.io/travis/obulat/trLemmer.svg
-        :target: https://travis-ci.org/obulat/trLemmer
+.. image:: https://dev.azure.com/obulat0592/trlemmer/_apis/build/status/obulat.trLemmer?branchName=master
+        :target: https://dev.azure.com/obulat0592/trlemmer/
 
 .. image:: https://readthedocs.org/projects/trLemmer/badge/?version=latest
         :target: https://trLemmer.readthedocs.io/en/latest/?badge=latest
