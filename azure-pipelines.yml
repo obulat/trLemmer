@@ -28,6 +28,7 @@ steps:
 - script: |
     python -m pip install --upgrade pip
     pip install -r requirements.txt
+    python -m nltk.downloader all
   displayName: 'Install dependencies'
 
 - script: |
