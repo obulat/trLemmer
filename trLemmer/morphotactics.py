@@ -660,7 +660,7 @@ vImpYemekYi_S = MorphemeState("vImpYemekYi_S", imp, False, False, False)
 vImpYemekYe_S = MorphemeState("vImpYemekYe_S", imp, False, False, False)
 
 vCausT_S = MorphemeState("vCaus_S", caus, False, True, False)
-vCausTır_S = MorphemeState("vCausTır_S", caus, False, True, False)
+vCausTir_S = MorphemeState("vCausTır_S", caus, False, True, False)
 
 vRecip_S = MorphemeState("vRecip_S", recip, False, True, False)
 vImplicitRecipRoot_S = MorphemeState("vImplicitRecipRoot_S", verb, False, False, True)
@@ -2471,20 +2471,20 @@ class TurkishMorphotactics:
             vCausT_S,
             "t",
             HasRootAttribute(RootAttribute.Causative_t)
-                .or_(LastDerivationIs(vCausTır_S))
+                .or_(LastDerivationIs(vCausTir_S))
                 .and_not(LastDerivationIsAny(vCausT_S, vPass_S, vAble_S)),
         )
 
         verbRoot_S.add(
-            vCausTır_S,
+            vCausTir_S,
             ">dIr",
             HasPhoneticAttribute(PhoneticAttribute.LastLetterConsonant).and_not(
-                LastDerivationIsAny(vCausTır_S, vPass_S, vAble_S)
+                LastDerivationIsAny(vCausTir_S, vPass_S, vAble_S)
             ),
         )
 
         vCausT_S.add_empty(verbRoot_S)
-        vCausTır_S.add_empty(verbRoot_S)
+        vCausTir_S.add_empty(verbRoot_S)
 
         # Progressive1 suffix. "-Iyor"
         # if last letter is a vowel, this is handled with verbRoot_VowelDrop_S root.
@@ -2748,7 +2748,7 @@ class TurkishMorphotactics:
         verbRoot_S.add(
             vPass_S,
             "+nIl",
-            PreviousStateIsAny(vCausT_S, vCausTır_S)
+            PreviousStateIsAny(vCausT_S, vCausTir_S)
                 .or_(not_have(RootAttribute.Passive_In))
                 .and_not(ContainsMorpheme(pass_)),
         )
@@ -2892,7 +2892,7 @@ class TurkishMorphotactics:
 
         vDeYeRoot_S.add_all(
             [
-                (vCausTır_S, "dir", deYeCondition),
+                (vCausTir_S, "dir", deYeCondition),
                 (vPass_S, "n", deYeCondition),
                 (vPass_S, "nil", deYeCondition),
                 (vPast_S, "di", deYeCondition),

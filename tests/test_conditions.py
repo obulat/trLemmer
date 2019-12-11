@@ -13,7 +13,7 @@ from trLemmer.conditions import CombinedCondition, has, HasRootAttribute, Dictio
 from trLemmer.lexicon import RootLexicon
 from trLemmer.morphology import MorphAnalyzer
 from trLemmer.morphotactics import SearchPath, StemTransition, noun_S, SurfaceTransition, SuffixTransition, \
-    adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTır_S, \
+    adjectiveRoot_ST, verbRoot_S, become_S, vPast_S, past, verb, vCausTir_S, \
     nom_ST, vAgt_S, a3sg_S, pnon_S, morphemes, agt, a3sg, noun, pnon, nom, vPass_S, vAble_S
 
 lex = RootLexicon.from_lines(["adak", "elma", "beyaz [P:Adj]", "meyve"])
@@ -160,7 +160,7 @@ def beyazlastirici_paths(mt_lexicon):
     beyaz = mt_lexicon.get_item_by_id('beyaz_Adj')
     assert beyaz is not None
 
-    states = [(become_S, 'laş'), (verbRoot_S, ''), (vCausTır_S, 'tır'), (verbRoot_S, ''),
+    states = [(become_S, 'laş'), (verbRoot_S, ''), (vCausTir_S, 'tır'), (verbRoot_S, ''),
               (vAgt_S, 'ıcı'), (noun_S, ''), (a3sg_S, ''), (pnon_S, ''), (nom_ST, '')]
     stem_transition = StemTransition(beyaz, adjectiveRoot_ST)
     surface_transitions = [SurfaceTransition(stem_transition.surface, stem_transition)]
@@ -261,12 +261,12 @@ def test_LastDerivationIs(beyazlastirici_paths):
     assert not LastDerivationIs(vPast_S).accept(paths[2])
     # WHEN beyaz:adjectiveRoot_ST + laş:become_S + verbRoot_S +
     # tır:vCausTır_S + verbRoot_S
-    assert LastDerivationIs(vCausTır_S).accept(paths[4])
+    assert LastDerivationIs(vCausTir_S).accept(paths[4])
     assert not LastDerivationIs(vAgt_S).accept(paths[4])
     # WHEN beyaz:adjectiveRoot_ST + laş:become_S + verbRoot_S +
     # tır:vCausTır_S + verbRoot_S + ıcı:vAgt_S
     assert LastDerivationIs(vAgt_S).accept(paths[5])
-    assert not LastDerivationIs(vCausTır_S).accept(paths[5])
+    assert not LastDerivationIs(vCausTir_S).accept(paths[5])
 
 
 def test_HasTailSequence(beyazlastirici_paths):
@@ -297,7 +297,7 @@ def test_ContainsMorphemeSequence(beyazlastirici_paths):
 
 def test_LastDerivationIsAny(beyazlastirici_paths):
     path = beyazlastirici_paths[3]
-    assert LastDerivationIsAny(vCausTır_S, vPass_S, vAble_S).accept(path)
+    assert LastDerivationIsAny(vCausTir_S, vPass_S, vAble_S).accept(path)
     assert not LastDerivationIsAny(become_S).accept(path)
 
 
@@ -305,12 +305,12 @@ def test_CurrentGroupContainsAny(beyazlastirici_paths):
     path = beyazlastirici_paths[5]
     # WHERE the last inflection group is ici:vAgt_S
     print(path)
-    assert not CurrentGroupContainsAny(vCausTır_S).accept(path)
+    assert not CurrentGroupContainsAny(vCausTir_S).accept(path)
     assert CurrentGroupContainsAny(vAgt_S).accept(path)
     path = beyazlastirici_paths[-1]
     # WHERE the last inflection group is ici:vAgt_S+noun_S+a3sg_S+pnon_S+nom_ST
     print(path)
-    assert not CurrentGroupContainsAny(vCausTır_S).accept(path)
+    assert not CurrentGroupContainsAny(vCausTir_S).accept(path)
     assert CurrentGroupContainsAny(vAgt_S).accept(path)
 
 
@@ -318,13 +318,13 @@ def test_PreviousGroupContainsAny(beyazlastirici_paths):
     path = beyazlastirici_paths[4]
     # WHERE the previous infl group is: become_S + verbRoot_S
     # the current inflection group is ici:vCausTir_S+verbRoot_S
-    assert not PreviousGroupContains(vCausTır_S).accept(path)
+    assert not PreviousGroupContains(vCausTir_S).accept(path)
     assert PreviousGroupContains(become_S).accept(path)
     assert PreviousGroupContains(verbRoot_S).accept(path)
     path = beyazlastirici_paths[-1]
     # WHERE the previous inflection group is: vCausTir_S+verbRoot_S
     # the current inflection group is ici:vAgt_S+noun_S+a3sg_S+pnon_S+nom_ST
-    assert PreviousGroupContains(vCausTır_S).accept(path)
+    assert PreviousGroupContains(vCausTir_S).accept(path)
     assert not PreviousGroupContains(vAgt_S).accept(path)
     assert not PreviousGroupContains(become_S).accept(path)
 
