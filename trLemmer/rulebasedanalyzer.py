@@ -2,7 +2,7 @@ from trLemmer.attributes import PhoneticAttribute, calculate_phonetic_attributes
 from trLemmer.morphotactics import SurfaceTransition, SearchPath, generate_surface
 import logging
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.ERROR)
 
 
 class RuleBasedAnalyzer:

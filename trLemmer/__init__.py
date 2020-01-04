@@ -6,6 +6,6 @@ __author__ = """Olga Bulat"""
 __email__ = 'obulat@gmail.com'
 __version__ = '0.1.0'
 
-from .trLemmer import TrLemmer
+from .morphology import MorphAnalyzer
 
-__all__ = ['TrLemmer']
+__all__ = ['MorphAnalyzer']
