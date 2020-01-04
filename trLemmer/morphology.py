@@ -285,13 +285,14 @@ class UDFormatter:
         elif pos == "Num":
             return self.format_num(analysis)
 
-        result = f"[{analysis.dict_item.lemma}:{analysis.dict_item.primary_pos.value}"
-        if analysis.dict_item.secondary_pos != SecondaryPos.NONE:
-            result = (
-                f"{result},{analysis.dict_item.secondary_pos.name}] "
-            )  # TODO: check name works
-        else:
-            result = f"{result}] "
+        # result = f"[{analysis.dict_item.lemma}:{analysis.dict_item.primary_pos.value}"
+        # if analysis.dict_item.secondary_pos != SecondaryPos.NONE:
+        #     result = (
+        #         f"{result},{analysis.dict_item.secondary_pos.name}] "
+        #     )  # TODO: check name works
+        # else:
+        #     result = f"{result}] "
+        result = ""
         result += self.format_morphemes(stem=analysis.stem, surfaces=analysis.morphemes)
         return result
 
@@ -316,6 +317,17 @@ class UDFormatter:
             elif i < len(surfaces) - 1 and not surfaces[i + 1][0].derivational:
                 result.append(" + ")
         return "".join(result)
+
+
+_Parse = collections.namedtuple('Parse', 'word, lemma, morphemes, formatted_form')
+
+
+class Parse(_Parse):
+    """
+    Parse result wrapper. Based on https://github.com/kmike/pymorphy2/blob/master/pymorphy2/analyzer.py
+    TODO: Decide which methods to add
+    """
+    pass
 
 
 class MorphAnalyzer:
@@ -398,15 +410,16 @@ class MorphAnalyzer:
                     result.append((word, lemmas))
         return result
 
-    def analyze_word(self, word) -> typing.List[typing.Tuple]:
+    def analyze_word(self, word) -> typing.List[Parse]:
         normalized_word = self.normalize_word(word)
         analysis = self.analyzer.analyze(normalized_word)
         if len(analysis) == 0:
-            return [(word, None)]
+            return [Parse(word, 'Unk', 'Unk', 'Unk')]
         result = []
         for a in analysis:
             formatted = self.formatter.format(a)
-            result.append((word, formatted))
+            morpheme_list = [m[0].id_ for m in a.morphemes]
+            result.append(Parse(word, a.dict_item.lemma, morpheme_list, formatted))
         return result
 
     def lemmatize_word(self, word):
@@ -419,7 +432,7 @@ class MorphAnalyzer:
     def analyze_sentence(self, sentence):
         result = []
         for word in word_tokenize(sentence, language="turkish"):
-            result.append((word, self.analyze_word(word)))
+            result.append(self.analyze_word(word))
         return result
 
     def lemmatize_sentence(self, sentence, no_punctuation=True):
@@ -456,6 +469,7 @@ class DefaultFormatter:
             )  # TODO: check name works
         else:
             result = f"{result}] "
+        result = ""
         result += self.format_morphemes(stem=analysis.stem, surfaces=analysis.morphemes)
         return result
 
