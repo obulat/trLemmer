@@ -33,12 +33,19 @@ Basic Usage
 
 .. code-block:: pycon
 
-    >>> from trLemmer import TrLemmer
-    >>> lemmatizer = TrLemmer()
-    >>> lemma = lemmatizer.lemmatize('beyazlaştıracak')
-    >>> print(lemma)
+    >>> from trLemmer import MorphAnalyzer
+    >>> lemmatizer = MorphAnalyzer()
+    >>> lemmas = lemmatizer.lemmatize_word('beyazlaştıracak')
+    >>> print(lemmas[0])
     beyaz
 
+    >>> lemmatization = lemmatizer.lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")
+    Yarın: ['yarmak', 'yarın', 'yar', 'yarı']
+    doktora: ['doktor', 'doktora']
+    gideceğimizi: ['gitmek']
+    öğrendi: ['öğrenmek']
 
 
 
