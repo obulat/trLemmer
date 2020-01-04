@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import collections
+
 from nltk.tokenize import word_tokenize, sent_tokenize
 from trLemmer import tr
 from trLemmer.attributes import RootAttribute, SecondaryPos
@@ -45,11 +47,11 @@ class UDFormatter:
                 if m_id in UDFormatter.cases:
                     case = m_id
                 else:
-                    posessive = UDFormatter.get(m_id)
-                    if posessive is not None:
-                        npsor, psor = posessive
+                    possessive = UDFormatter.posessives.get(m_id)
+                    if possessive is not None:
+                        npsor, psor = possessive
                     else:
-                        agreement = UDFormatter.get(m_id)
+                        agreement = UDFormatter.agreement_values.get(m_id)
                         if agreement is not None:
                             number, person = agreement
             return nadj_str.format(case=case, number=number,
@@ -70,10 +72,10 @@ class UDFormatter:
             # print("\tMorph id: ", morph.id_)
             if morph.id_ in UDFormatter.cases:
                 case = morph.id_
-            posessive_value = UDFormatter.posessives.get(morph.id_)
+            possessive_value = UDFormatter.posessives.get(morph.id_)
             agreement_value = UDFormatter.agreement_values.get(morph.id_)
-            if posessive_value is not None:
-                number_psor, person_psor = posessive_value
+            if possessive_value is not None:
+                number_psor, person_psor = possessive_value
             if agreement_value is not None:
                 number, person = agreement_value
 
@@ -326,7 +328,7 @@ class MorphAnalyzer:
     Create a :class:`TrLemmer` object ::
 
         >>> import trLemmer
-        >>> lemmer = trLemmer.MorphAnalyzer()
+        >>> lemmer = trLemmer.TrLemmer()
 
     Analyzer uses default text dictionaries
     (TODO: sources), as well as an optional unknown word analyzer).
@@ -421,7 +423,6 @@ class MorphAnalyzer:
         return result
 
     def lemmatize_sentence(self, sentence, no_punctuation=True):
-        import re
         from trLemmer import tr
         import string
 
