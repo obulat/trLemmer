@@ -35,6 +35,86 @@ Basic Usage
 
     >>> from trLemmer import MorphAnalyzer
     >>> lemmatizer = MorphAnalyzer()
+    >>> lemmas = lemmatizer.lemmatize('beyazlaştıracak')
+    >>> print(lemmas[0])
+    beyaz
+
+    >>> lemmatization = lemmatizer._lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")_lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")
+    Yarın: ['yarmak', 'yarın', 'yar', 'yarı']
+    doktora: ['doktor', 'doktora']
+    gideceğimizi: ['gitmek']
+    öğrendi: ['öğrenmek']
+    >>> from trLemmer import MorphAnalyzer
+    >>> lemmatizer = MorphAnalyzer()
+    >>> lemmas = lemmatizer.lemmatize('beyazlaştıracak')
+    >>> print(lemmas[0])
+    beyaz
+
+    >>> lemmatization = lemmatizer.lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")
+    Yarın: ['yarmak', 'yarın', 'yar', 'yarı']
+    doktora: ['doktor', 'doktora']
+    gideceğimizi: ['gitmek']
+    öğrendi: ['öğrenmek']
+    >>> from trLemmer import MorphAnalyzer
+    >>> lemmatizer = MorphAnalyzer()
+    >>> lemmas = lemmatizer.lemmatize_word('beyazlaştıracak')
+    >>> print(lemmas[0])
+    beyaz
+
+    >>> lemmatization = lemmatizer._lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")
+    Yarın: ['yarmak', 'yarın', 'yar', 'yarı']
+    doktora: ['doktor', 'doktora']
+    gideceğimizi: ['gitmek']
+    öğrendi: ['öğrenmek']
+    >>> from trLemmer import MorphAnalyzer
+    >>> lemmatizer = MorphAnalyzer()
+    >>> lemmas = lemmatizer.lemmatize_word('beyazlaştıracak')
+    >>> print(lemmas[0])
+    beyaz
+
+    >>> lemmatization = lemmatizer._lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")
+    Yarın: ['yarmak', 'yarın', 'yar', 'yarı']
+    doktora: ['doktor', 'doktora']
+    gideceğimizi: ['gitmek']
+    öğrendi: ['öğrenmek']
+    >>> from trLemmer import MorphAnalyzer
+    >>> lemmatizer = MorphAnalyzer()
+    >>> lemmas = lemmatizer.lemmatize_word('beyazlaştıracak')
+    >>> print(lemmas[0])
+    beyaz
+
+    >>> lemmatization = lemmatizer.lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")
+    Yarın: ['yarmak', 'yarın', 'yar', 'yarı']
+    doktora: ['doktor', 'doktora']
+    gideceğimizi: ['gitmek']
+    öğrendi: ['öğrenmek']
+    >>> from trLemmer import MorphAnalyzer
+    >>> lemmatizer = MorphAnalyzer()
+    >>> lemmas = lemmatizer.lemmatize_word('beyazlaştıracak')
+    >>> print(lemmas[0])
+    beyaz
+
+    >>> lemmatization = lemmatizer.lemmatize_sentence("Yarın doktora gideceğimizi öğrendi.")
+    >>> for (word, lemmas) in lemmatization:
+    >>>     print(f"{word}: {lemmas}")
+    Yarın: ['yarmak', 'yarın', 'yar', 'yarı']
+    doktora: ['doktor', 'doktora']
+    gideceğimizi: ['gitmek']
+    öğrendi: ['öğrenmek']
+    >>> from trLemmer import MorphAnalyzer
+    >>> lemmatizer = MorphAnalyzer()
     >>> lemmas = lemmatizer.lemmatize_word('beyazlaştıracak')
     >>> print(lemmas[0])
     beyaz

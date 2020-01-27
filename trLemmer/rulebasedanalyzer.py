@@ -1,5 +1,9 @@
-from trLemmer.attributes import PhoneticAttribute, calculate_phonetic_attributes
-from trLemmer.morphotactics import SurfaceTransition, SearchPath, generate_surface
+import collections
+from typing import Optional
+
+from trLemmer.attributes import PhoneticAttribute, calculate_phonetic_attributes, RootAttribute
+from trLemmer.lexicon import DictionaryItem
+from trLemmer.morphotactics import SurfaceTransition, SearchPath, generate_surface, nom, pnon
 import logging
 
 logging.basicConfig(level=logging.ERROR)
@@ -16,7 +20,6 @@ class RuleBasedAnalyzer:
         self.stem_transitions = morphotactics.stem_transitions
 
     def analyze(self, word):
-        from trLemmer.morphology import SingleAnalysis
 
         # get stem candidates.
         candidates = self.stem_transitions.prefix_matches(word)
@@ -33,7 +36,7 @@ class RuleBasedAnalyzer:
         # generate results from successful paths.
         result = []
         for path in result_paths:
-            analysis = SingleAnalysis(path)
+            analysis = parse_analysis(path)
             result.append(analysis)
         return result
 
@@ -145,3 +148,58 @@ class RuleBasedAnalyzer:
                 if not remove:
                     result.append(token)
         return result
+
+
+_Single_Analysis = collections.namedtuple('SingleAnalysis', 'stem, morphemes, derivation_count, dict_item, '
+                                                            'group_boundaries')
+
+
+def parse_analysis(search_path: SearchPath) -> _Single_Analysis:
+    """
+        This class represents a single morphological analysis result.
+        :param search_path: The Search path that was created by MorphAnalyzer
+        :param dict_item: Dictionary Item of the analysis.
+        :param morpheme_data_list: Contains Morphemes and their surface form (actual appearance in the normalized input)
+        List also contain the root (unchanged or modified) of the Dictionary item.
+        For example, for normalized input "kedilere"
+        This list may contain "kedi:Noun, ler:A3pl , e:Dat" information.
+        :param group_boundaries: groupBoundaries holds the index values of morphemes.
+     """
+    morphemes = []
+    derivation_count = 0
+    dict_item: Optional[DictionaryItem] = None
+
+    for transition in search_path.transitions:
+        if transition.is_derivative:
+            derivation_count += 1
+        morpheme = transition.morpheme
+        # we skip these two morphemes as they create visual noise and does not carry much information.
+        if morpheme == nom or morpheme == pnon:
+            continue
+        if len(transition.surface) == 0:
+            morpheme_data = (morpheme, "")
+            morphemes.append(morpheme_data)
+            continue
+        morpheme_data = (morpheme, transition.surface)
+        morphemes.append(morpheme_data)
+    group_boundaries = [
+        0 for _ in range(derivation_count + 1)
+    ]  # we assume there is always an IG
+    group_boundaries[0] = 0
+    morpheme_counter = 0
+    derivation_counter = 1
+    for mdata in morphemes:
+        if mdata[0].derivational:
+            group_boundaries[derivation_counter] = morpheme_counter
+            derivation_counter += 1
+        morpheme_counter += 1
+
+    # if dictionary item is `Dummy`, use the referenced item.
+    # `Dummy` items are usually generated for some compound words. For example for `zeytinyağı`
+    # a DictionaryItem is generated with root "zeytinyağ". But here we switch to the original.
+    if search_path.dict_item.has_attribute(RootAttribute.Dummy):
+        # dict_item = search_path.dict_item.ref_item # this should work but doesn't
+        dict_item = search_path.dict_item
+    else:
+        dict_item = search_path.dict_item
+    return _Single_Analysis(morphemes[0][1], morphemes, derivation_count, dict_item, group_boundaries)

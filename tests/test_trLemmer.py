@@ -114,7 +114,7 @@ def test_analysis(lex_from_lines):
     # analysis = lemmer.analyze_word('elma')
     # print(analysis)
     # assert analysis is not None
-    analysis = lemmer.analyze_word('beyazlaştırıcı')
+    analysis = lemmer.analyze('beyazlaştırıcı')
     print(analysis)
     assert analysis is not None
     # assert 'beyaz' in lemmer.lemmatize('beyazlaştı')
@@ -133,5 +133,5 @@ def test_sentence():
     lemmer = MorphAnalyzer()
     sentence = "Hakkıdır hakka tapan milletimin istiklâl!"
     # sentence = "Seçimlerinde yaptıklarımız"
-    result = lemmer.lemmatize_sentence(sentence)
+    result = lemmer._lemmatize_sentence(sentence)
     print(result)
