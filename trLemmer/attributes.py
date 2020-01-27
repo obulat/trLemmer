@@ -37,7 +37,7 @@ class SecondaryPos(Enum):
     ProperNoun = "Prop"
     PersonalPron = "Pers"
     ReflexivePron = "Reflex"
-    NONE = "None"
+    NONE = None
     Ordinal = "Ord"
     Cardinal = "Card"
     Percentage = "Percent"

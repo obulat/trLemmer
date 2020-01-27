@@ -5,9 +5,9 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from trLemmer import tr
 from trLemmer.formatters import UDFormatter, DefaultFormatter
 from trLemmer.lexicon import RootLexicon
-from trLemmer.morphotactics import TurkishMorphotactics, SearchPath, pnon, nom
+from trLemmer.morphotactics import TurkishMorphotactics
 from trLemmer.rulebasedanalyzer import RuleBasedAnalyzer
-import typing
+from typing import List, Tuple
 
 """Main module."""
 
@@ -22,6 +22,22 @@ class Parse(_Parse):
     pass
 
 
+def split_sentences(text):
+    """ Splits text into sentences, returns a list of sentences."""
+    return sent_tokenize(text, language="turkish")
+
+
+def _normalize(word):
+    word = tr.normalize_circumflex(tr.lower(word))
+    # TODO: Decide what to do with apostrophes
+    word = word.replace("'", "")
+    return word
+
+
+def _tokenize_sentence(sentence):
+    return word_tokenize(sentence.replace("'", "").replace("’", ""), language="turkish")
+
+
 class MorphAnalyzer:
     """
     Morphological analyzer for Turkish language.
@@ -32,7 +48,7 @@ class MorphAnalyzer:
     Create a :class:`TrLemmer` object ::
 
         >>> import trLemmer
-        >>> lemmer = trLemmer.TrLemmer()
+        >>> lemmer = trLemmer.MorphAnalyzer()
 
     Analyzer uses default text dictionaries
     (TODO: sources), as well as an optional unknown word analyzer).
@@ -43,10 +59,19 @@ class MorphAnalyzer:
 
     TrLemmer can analyze or lemmatize words and sentences.
 
-        >>> lemmer.lemmatize_word('beyazlaştırmak')
+        >>> lemmer.lemmatize('beyazlaştırmak')
         ['beyaz']
 
     #TODO: Add analysis for words with apostrophes
+    Methods should be:
+    analyze: for one word only
+    analyze_text: for texts, to be split by sentences and analyzed by sentences
+    lemmatize: for one word only
+    lemmatize_text: for texts, to be split by sentences and lemmatized by sentences
+    _analyze_sentence: for inner use, when analyze_text is used, chooses which Parse to use for each word
+    _lemmatize_sentence: for inner use, when lemmatize_text is used, chooses which Parse to use for each word
+
+    Each method uses method _parse to get SingleAnalysis for the word
     """
 
     formatters = {"UD": UDFormatter}
@@ -63,188 +88,64 @@ class MorphAnalyzer:
             else MorphAnalyzer.formatters[formatter]()
         )
 
-    def analyze(self, text, verbose=False):
-        result = []
-        sentences = sent_tokenize(text, language="turkish")
-        for sentence in sentences:
-            sentence_analysis = self.analyze_sentence(sentence)
-            result.append((sentence, sentence_analysis))
-        return result
+    def _parse(self, word: str):
+        """ Parses a word and returns SingleAnalysis result. """
+        normalized_word = _normalize(word)
+        return self.analyzer.analyze(normalized_word)
 
-    @staticmethod
-    def normalize_word(word):
-        word = tr.normalize_circumflex(tr.lower(word))
-        # TODO: Decide what to do with apostrophes
-        word = word.replace("'", "")
-        return tr.lower(word)
-
-    def lemmatize(self, text, by_sent=False, no_punctuation=False):
-        import string
-
-        punctuation = list(string.punctuation)
-        punctuation.remove("'")
-        print(f"Punctuation: {string.punctuation}/ {punctuation}")
-        result = []
-        sentences = sent_tokenize(text, language="turkish")
-        if by_sent:
-            for sentence in sentences:
-                sentence_lemmas = self.lemmatize_sentence(sentence, no_punctuation)
-                result.append((sentence, sentence_lemmas))
-        else:
-            for word in word_tokenize(text, language="turkish"):
-                res_word = []
-                for letter in word:
-                    if letter not in punctuation:
-                        res_word.append(letter)
-                word = "".join(res_word)
-                if word:
-                    lemmas = self.lemmatize_word(tr.lower(word))
-                    result.append((word, lemmas))
-        return result
-
-    def analyze_word(self, word) -> typing.List[Parse]:
-        normalized_word = self.normalize_word(word)
-        analysis = self.analyzer.analyze(normalized_word)
+    def analyze(self, word) -> List[Parse]:
+        analysis = self._parse(word)
         if len(analysis) == 0:
             return [Parse(word, 'Unk', 'Unk', 'Unk')]
         result = []
         for a in analysis:
-            formatted = self.formatter.format(a)
-            morpheme_list = [m[0].id_ for m in a.morphemes]
-            result.append(Parse(word, a.dict_item.lemma, morpheme_list, formatted))
+            if a is not None:
+                formatted = self.formatter.format(a)
+                morpheme_list = [m[0].id_ for m in a.morphemes]
+                result.append(Parse(word, a.dict_item.lemma, morpheme_list, formatted))
+            else:
+                result.append(Parse(word, 'Unk', 'Unk', 'Unk'))
         return result
 
-    def lemmatize_word(self, word):
-        analysis = self.analyzer.analyze(word)
+    def lemmatize(self, word):
+        analysis = self._parse(word)
         if len(analysis) == 0:
             return [word]
         else:
             return list(set([a.dict_item.lemma for a in analysis]))
 
-    def analyze_sentence(self, sentence):
+    def lemmatize_text(self, text: str) -> List[Tuple[str, List]]:
+        """
+        This method will eventually use some form of disambiguation for lemmatizing.
+        Currently it simply returns all lemmas available for each word in each sentence.
+        :param text: The text which needs lemmatization. It will be split into sentences,
+        each of which will be lemmatized by word
+        :return: A list of tuples: sentence and a list of list of lemmas for all words
+        """
         result = []
-        for word in word_tokenize(sentence, language="turkish"):
-            result.append(self.analyze_word(word))
+        sentences = split_sentences(text)
+        for sentence in sentences:
+            sentence_lemmas = self._lemmatize_sentence(sentence)
+            result.append((sentence, sentence_lemmas))
         return result
 
-    def lemmatize_sentence(self, sentence, no_punctuation=True):
-        from trLemmer import tr
-        import string
-
-        punct = string.punctuation
+    def analyze_text(self, text, verbose=False):
         result = []
-        # words = [_ for _ in re.split(r"(\W+)", sentence) if _ != ' ']
-        words = word_tokenize(sentence, language="turkish")
+        sentences = sent_tokenize(text, language="turkish")
+        for sentence in sentences:
+            sentence_analysis = self._analyze_sentence(sentence)
+            result.append((sentence, sentence_analysis))
+        return result
+
+    def _analyze_sentence(self, sentence):
+        result = []
+        for word in _tokenize_sentence(sentence):
+            result.append(self.analyze(word))
+        return result
+
+    def _lemmatize_sentence(self, sentence: str) -> List[List[str]]:
+        result = []
+        words = _tokenize_sentence(sentence)
         for word in words:
-            if no_punctuation and word in punct:
-                continue
-            res_word = []
-            for letter in word:
-                if letter not in punct:
-                    res_word.append(letter)
-            word = "".join(res_word)
-            if word:
-                analysis = self.lemmatize_word(tr.lower(word))
-                result.append((word, analysis))
+            result.append(self.lemmatize(word))
         return result
-
-
-class DefaultFormatter:
-    def __init__(self, add_surface=True):
-        self.add_surface = add_surface
-
-    def format(self, analysis) -> str:
-        result = f"[{analysis.dict_item.lemma}:{analysis.dict_item.primary_pos.value}"
-        if analysis.dict_item.secondary_pos != SecondaryPos.NONE:
-            result = (
-                f"{result},{analysis.dict_item.secondary_pos.value}] "
-            )  # TODO: check name works
-        else:
-            result = f"{result}] "
-        result = ""
-        result += self.format_morphemes(stem=analysis.stem, surfaces=analysis.morphemes)
-        return result
-
-    def format_morphemes(self, stem, surfaces):
-        result = []
-        if self.add_surface:
-            result.append(f"{stem}:")
-        result.append(surfaces[0][0].id_)
-        if len(surfaces) > 1 and not surfaces[1][0].derivational:
-            result.append(" + ")
-        for i, sf in enumerate(surfaces):
-            if i == 0:
-                continue
-            m, surface = sf
-            if m.derivational:
-                result.append(" | ")
-            if self.add_surface and len(surface) > 0:
-                result.append(f"{surface}:")
-            result.append(m.id_)
-            if m.derivational:
-                result.append("→")
-            elif i < len(surfaces) - 1 and not surfaces[i + 1][0].derivational:
-                result.append(" + ")
-        return "".join(result)
-
-
-class SingleAnalysis:
-    """
-       This class represents a single morphological analysis result.
-       :param dict_item: Dictionary Item of the analysis.
-       :param morpheme_data_list: Contains Morphemes and their surface form (actual appearance in the normalized input)
-       List also contain the root (unchanged or modified) of the Dictionary item.
-       For example, for normalized input "kedilere"
-       This list may contain "kedi:Noun, ler:A3pl , e:Dat" information.
-       :param group_boundaries: groupBoundaries holds the index values of morphemes.
-       """
-
-    def __init__(self, search_path: SearchPath):
-        self.path = search_path
-        self.morphemes = []
-        self.derivation_count = 0
-        self.dict_item = None
-        self.group_boundaries = []
-        self.parse_dict_item_and_boundaries()
-
-    def __repr__(self):
-        return f"{self.dict_item}-{self.morphemes}"
-
-    def parse_dict_item_and_boundaries(self):
-        for transition in self.path.transitions:
-            if transition.is_derivative:
-                self.derivation_count += 1
-            morpheme = transition.morpheme
-            # we skip these two morphemes as they create visual noise and does not carry much information.
-            if morpheme == nom or morpheme == pnon:
-                continue
-            if len(transition.surface) == 0:
-                morpheme_data = (morpheme, "")
-                self.morphemes.append(morpheme_data)
-                continue
-            morpheme_data = (morpheme, transition.surface)
-            self.morphemes.append(morpheme_data)
-        group_boundaries = [
-            0 for _ in range(self.derivation_count + 1)
-        ]  # we assume there is always an IG
-        group_boundaries[0] = 0
-        morpheme_counter = 0
-        derivation_counter = 1
-        for mdata in self.morphemes:
-            if mdata[0].derivational:
-                group_boundaries[derivation_counter] = morpheme_counter
-                derivation_counter += 1
-            morpheme_counter += 1
-
-        # if dictionary item is `Dummy`, use the referenced item.
-        # `Dummy` items are usually generated for some compound words. For example for `zeytinyağı`
-        # a DictionaryItem is generated with root "zeytinyağ". But here we switch to the original.
-        dict_item = self.path.dict_item
-        if dict_item.has_attribute(RootAttribute.Dummy):
-            dict_item = dict_item.ref_item
-        self.dict_item = dict_item
-        self.group_boundaries = group_boundaries
-
-    @property
-    def stem(self):
-        return self.morphemes[0][1]
