@@ -2238,7 +2238,7 @@ class TurkishMorphotactics:
             ]
         )
 
-        hepsiCnd = DictionaryItemIsAny(
+        hepsi_cnd = DictionaryItemIsAny(
             kendi,
             kim,
             ne,
@@ -2266,11 +2266,11 @@ class TurkishMorphotactics:
                 (pAcc_ST, "+nI", nGroup),
                 (pDat_ST, "+yA", yGroup),
                 (pAcc_ST, "+yI", yGroup),
-                (pLoc_ST, "+ndA", hepsiCnd),
-                (pAbl_ST, "+ndAn", hepsiCnd),
-                (pGen_ST, "+nIn", hepsiCnd.or_(DictionaryItemIsAny(sen, siz))),
-                (pEqu_ST, "+ncA", hepsiCnd),
-                (pIns_ST, "+ylA", hepsiCnd),
+                (pLoc_ST, "+ndA", hepsi_cnd),
+                (pAbl_ST, "+ndAn", hepsi_cnd),
+                (pGen_ST, "+nIn", hepsi_cnd.or_(DictionaryItemIsAny(sen, siz))),
+                (pEqu_ST, "+ncA", hepsi_cnd),
+                (pIns_ST, "+ylA", hepsi_cnd),
             ]
         )
 

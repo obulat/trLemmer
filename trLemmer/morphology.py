@@ -143,9 +143,9 @@ class MorphAnalyzer:
             result.append(self.analyze(word))
         return result
 
-    def _lemmatize_sentence(self, sentence: str) -> List[List[str]]:
+    def _lemmatize_sentence(self, sentence: str) -> List[Tuple[str, List[str]]]:
         result = []
         words = _tokenize_sentence(sentence)
         for word in words:
-            result.append(self.lemmatize(word))
+            result.append((word, self.lemmatize(word)))
         return result
