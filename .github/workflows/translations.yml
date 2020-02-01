@@ -16,5 +16,5 @@ jobs:
             - name: Install dependencies
               run: |
                   python -m pip install --upgrade pip
-                  python -m pip install transifex
+                  python -m pip install transifex-client
                   tx pull -a --mode reviewed
