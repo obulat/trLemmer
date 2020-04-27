@@ -1,4 +1,4 @@
-Sphinx==3.0.0
+Sphinx==3.0.3
 pytest==5.4.1
 pytest-runner==5.2
 nltk==3.4.5
