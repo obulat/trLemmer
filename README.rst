@@ -13,6 +13,8 @@ Turkish Lemmatizer
         :target: https://trLemmer.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
+trLemmer is replaced by `Zeyrek <http://www.github.com/obulat/zeyrek/>`_.
+=========================================================================
 
 trLemmer is a partial port of Zemberek library to Python for lemmatizing
 Turkish language words. It is not ready for use yet.
